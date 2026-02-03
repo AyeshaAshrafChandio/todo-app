@@ -1,0 +1,422 @@
+openapi: 3.0.3
+info:
+  title: Todo Backend API
+  description: |
+    REST API for Todo application backend (Spec-1: Core & Data Layer).
+
+    This API provides CRUD operations for task management without authentication enforcement.
+    Authentication and user isolation will be added in Spec-2.
+
+    **Key Features:**
+    - Create, read, update, and delete tasks
+    - Toggle task completion status
+    - Automatic timestamp management
+    - Input validation with detailed error messages
+
+    **Base URL:** `http://localhost:8000`
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.example.com
+    description: Production server (future)
+
+tags:
+  - name: tasks
+    description: Task management operations
+
+paths:
+  /api/{user_id}/tasks:
+    get:
+      tags:
+        - tasks
+      summary: List all tasks for a user
+      description: Retrieves all tasks belonging to the specified user_id. Returns an empty array if no tasks exist.
+      operationId: listTasks
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+              examples:
+                withTasks:
+                  summary: User with tasks
+                  value:
+                    - id: 1
+                      title: "Buy groceries"
+                      description: "Milk, eggs, bread"
+                      completed: false
+                      created_at: "2026-01-20T10:30:00Z"
+                      updated_at: "2026-01-20T10:30:00Z"
+                      user_id: "user123"
+                    - id: 2
+                      title: "Finish project"
+                      description: null
+                      completed: true
+                      created_at: "2026-01-20T09:15:00Z"
+                      updated_at: "2026-01-20T11:45:00Z"
+                      user_id: "user123"
+                emptyList:
+                  summary: User with no tasks
+                  value: []
+
+    post:
+      tags:
+        - tasks
+      summary: Create a new task
+      description: Creates a new task for the specified user_id with auto-generated ID and timestamps.
+      operationId: createTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+            examples:
+              withDescription:
+                summary: Task with description
+                value:
+                  title: "Buy groceries"
+                  description: "Milk, eggs, bread"
+              withoutDescription:
+                summary: Task without description
+                value:
+                  title: "Call dentist"
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+              example:
+                id: 1
+                title: "Buy groceries"
+                description: "Milk, eggs, bread"
+                completed: false
+                created_at: "2026-01-20T10:30:00Z"
+                updated_at: "2026-01-20T10:30:00Z"
+                user_id: "user123"
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/{user_id}/tasks/{id}:
+    get:
+      tags:
+        - tasks
+      summary: Get a specific task
+      description: Retrieves a single task by its ID for the specified user_id.
+      operationId: getTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/TaskIdParam'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+              example:
+                id: 1
+                title: "Buy groceries"
+                description: "Milk, eggs, bread"
+                completed: false
+                created_at: "2026-01-20T10:30:00Z"
+                updated_at: "2026-01-20T10:30:00Z"
+                user_id: "user123"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - tasks
+      summary: Update a task
+      description: Updates an existing task. The updated_at timestamp is automatically refreshed.
+      operationId: updateTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/TaskIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+            example:
+              title: "Buy groceries and supplies"
+              description: "Milk, eggs, bread, cheese, cleaning supplies"
+              completed: false
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+              example:
+                id: 1
+                title: "Buy groceries and supplies"
+                description: "Milk, eggs, bread, cheese, cleaning supplies"
+                completed: false
+                created_at: "2026-01-20T10:30:00Z"
+                updated_at: "2026-01-20T12:45:00Z"
+                user_id: "user123"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags:
+        - tasks
+      summary: Delete a task
+      description: Permanently deletes a task from the database.
+      operationId: deleteTask
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/TaskIdParam'
+      responses:
+        '204':
+          description: Task deleted successfully (no content)
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/{user_id}/tasks/{id}/complete:
+    patch:
+      tags:
+        - tasks
+      summary: Toggle task completion status
+      description: Toggles the completed status of a task (true ↔ false). The updated_at timestamp is automatically refreshed.
+      operationId: toggleTaskCompletion
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/TaskIdParam'
+      responses:
+        '200':
+          description: Task completion status toggled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+              examples:
+                markedComplete:
+                  summary: Task marked as complete
+                  value:
+                    id: 1
+                    title: "Buy groceries"
+                    description: "Milk, eggs, bread"
+                    completed: true
+                    created_at: "2026-01-20T10:30:00Z"
+                    updated_at: "2026-01-20T14:20:00Z"
+                    user_id: "user123"
+                markedIncomplete:
+                  summary: Task marked as incomplete
+                  value:
+                    id: 1
+                    title: "Buy groceries"
+                    description: "Milk, eggs, bread"
+                    completed: false
+                    created_at: "2026-01-20T10:30:00Z"
+                    updated_at: "2026-01-20T14:25:00Z"
+                    user_id: "user123"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    UserIdParam:
+      name: user_id
+      in: path
+      required: true
+      description: User identifier (placeholder for Spec-2, no validation in Spec-1)
+      schema:
+        type: string
+        maxLength: 100
+      example: "user123"
+
+    TaskIdParam:
+      name: id
+      in: path
+      required: true
+      description: Task identifier
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+  schemas:
+    TaskCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title (required, non-empty)
+          example: "Buy groceries"
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: Optional detailed description
+          example: "Milk, eggs, bread"
+
+    TaskUpdate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title (required, non-empty)
+          example: "Buy groceries and supplies"
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: Optional detailed description
+          example: "Milk, eggs, bread, cheese"
+        completed:
+          type: boolean
+          description: Completion status (optional)
+          example: false
+
+    TaskResponse:
+      type: object
+      required:
+        - id
+        - title
+        - completed
+        - created_at
+        - updated_at
+        - user_id
+      properties:
+        id:
+          type: integer
+          description: Unique task identifier (auto-generated)
+          example: 1
+        title:
+          type: string
+          description: Task title
+          example: "Buy groceries"
+        description:
+          type: string
+          nullable: true
+          description: Task description (may be null)
+          example: "Milk, eggs, bread"
+        completed:
+          type: boolean
+          description: Completion status
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp (ISO 8601, UTC)
+          example: "2026-01-20T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp (ISO 8601, UTC)
+          example: "2026-01-20T10:30:00Z"
+        user_id:
+          type: string
+          description: User identifier
+          example: "user123"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Task not found"
+
+    ValidationError:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: array
+          items:
+            type: object
+            required:
+              - loc
+              - msg
+              - type
+            properties:
+              loc:
+                type: array
+                items:
+                  type: string
+                description: Location of the error (e.g., ["body", "title"])
+                example: ["body", "title"]
+              msg:
+                type: string
+                description: Error message
+                example: "field required"
+              type:
+                type: string
+                description: Error type
+                example: "value_error.missing"
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Task not found"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          examples:
+            missingTitle:
+              summary: Missing required field
+              value:
+                detail:
+                  - loc: ["body", "title"]
+                    msg: "field required"
+                    type: "value_error.missing"
+            emptyTitle:
+              summary: Empty title
+              value:
+                detail:
+                  - loc: ["body", "title"]
+                    msg: "ensure this value has at least 1 characters"
+                    type: "value_error.any_str.min_length"
+            titleTooLong:
+              summary: Title exceeds maximum length
+              value:
+                detail:
+                  - loc: ["body", "title"]
+                    msg: "ensure this value has at most 200 characters"
+                    type: "value_error.any_str.max_length"
