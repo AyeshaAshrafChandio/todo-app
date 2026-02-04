@@ -260,27 +260,27 @@
 
 ### Frontend Type Definitions
 
-- [ ] T101 [P] Create TaskShare type in frontend/src/lib/types/share.ts with permission enum
-- [ ] T102 [P] Create SharePermission enum in frontend/src/lib/types/share.ts (view/edit)
+- [X] T101 [P] Create TaskShare type in frontend/src/lib/types/share.ts with permission enum
+- [X] T102 [P] Create SharePermission enum in frontend/src/lib/types/share.ts (view/edit)
 
 ### Frontend API Client
 
-- [ ] T103 [P] Create shareTask function in frontend/src/lib/api/shares.ts
-- [ ] T104 [P] Create revokeShare function in frontend/src/lib/api/shares.ts
-- [ ] T105 [P] Create getSharedTasks function in frontend/src/lib/api/shares.ts
+- [X] T103 [P] Create shareTask function in frontend/src/lib/api/shares.ts
+- [X] T104 [P] Create revokeShare function in frontend/src/lib/api/shares.ts
+- [X] T105 [P] Create getSharedTasks function in frontend/src/lib/api/shares.ts
 
 ### Frontend Hooks
 
-- [ ] T106 Create useShares hook in frontend/src/hooks/useShares.ts (manage task sharing)
+- [X] T106 Create useShares hook in frontend/src/hooks/useShares.ts (manage task sharing)
 
 ### Frontend Components
 
-- [ ] T107 [P] Create ShareTaskModal component in frontend/src/components/shared/ShareTaskModal.tsx (share task dialog)
-- [ ] T108 [P] Create SharedTaskList component in frontend/src/components/shared/SharedTaskList.tsx (displays shared tasks)
+- [X] T107 [P] Create ShareTaskModal component in frontend/src/components/shared/ShareTaskModal.tsx (share task dialog)
+- [X] T108 [P] Create SharedTaskList component in frontend/src/components/shared/SharedTaskList.tsx (displays shared tasks)
 
 ### Frontend Pages
 
-- [ ] T109 Create shared tasks page in frontend/src/app/(protected)/shared/page.tsx (shows tasks shared with user)
+- [X] T109 Create shared tasks page in frontend/src/app/(protected)/shared/page.tsx (shows tasks shared with user)
 
 ---
 
@@ -290,13 +290,13 @@
 
 ### Frontend Updates
 
-- [ ] T110 Extend Task type in frontend/src/lib/types/task.ts to add team_id and access_type fields
-- [ ] T111 Extend createTask function in frontend/src/lib/api/tasks.ts to support team_id parameter
-- [ ] T112 Extend getTask function in frontend/src/lib/api/tasks.ts to include team and sharing information
-- [ ] T113 Extend useTasks hook in frontend/src/hooks/useTasks.ts to support team filtering
-- [ ] T114 Update task creation form to include team selection dropdown (if user is member of teams)
-- [ ] T115 Update task list to show team badge/indicator for team tasks
-- [ ] T116 Update task detail view to show team information and share button
+- [X] T110 Extend Task type in frontend/src/lib/types/task.ts to add team_id and access_type fields
+- [X] T111 Extend createTask function in frontend/src/lib/api/tasks.ts to support team_id parameter
+- [X] T112 Extend getTask function in frontend/src/lib/api/tasks.ts to include team and sharing information
+- [X] T113 Extend useTasks hook in frontend/src/hooks/useTasks.ts to support team filtering
+- [X] T114 Update task creation form to include team selection dropdown (if user is member of teams)
+- [X] T115 Update task list to show team badge/indicator for team tasks
+- [X] T116 Update task detail view to show team information and share button
 
 ---
 
