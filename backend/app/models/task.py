@@ -8,7 +8,8 @@ and user ownership.
 
 from datetime import datetime
 from typing import Optional
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Column
+from sqlalchemy import ForeignKey
 
 
 class Task(SQLModel, table=True):
@@ -25,7 +26,7 @@ class Task(SQLModel, table=True):
         completed: Completion status (defaults to False)
         created_at: Timestamp when task was created (UTC, auto-generated)
         updated_at: Timestamp when task was last updated (UTC, auto-updated)
-        user_id: User identifier (placeholder for authentication in Spec-2)
+        user_id: User identifier (foreign key to User, nullable for legacy tasks from Spec-1)
 
     Database Table:
         Name: tasks
@@ -69,10 +70,28 @@ class Task(SQLModel, table=True):
         description="Completion status (defaults to False)"
     )
 
-    user_id: str = Field(
-        max_length=100,
-        index=True,
-        description="User identifier (placeholder for Spec-2, no enforcement)"
+    user_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(
+            "user_id",
+            ForeignKey("users.id", ondelete="CASCADE"),
+            index=True,
+            nullable=True
+        ),
+        max_length=36,
+        description="Owner of the task (foreign key to User, nullable for legacy tasks)"
+    )
+
+    team_id: Optional[str] = Field(
+        default=None,
+        sa_column=Column(
+            "team_id",
+            ForeignKey("teams.id", ondelete="SET NULL"),
+            index=True,
+            nullable=True
+        ),
+        max_length=36,
+        description="Optional team ownership (foreign key to Team, NULL = personal task)"
     )
 
     # Optional fields
@@ -102,7 +121,7 @@ class Task(SQLModel, table=True):
                 "title": "Buy groceries",
                 "description": "Milk, eggs, bread",
                 "completed": False,
-                "user_id": "user123",
+                "user_id": "550e8400-e29b-41d4-a716-446655440000",
                 "created_at": "2026-01-20T10:30:00Z",
                 "updated_at": "2026-01-20T10:30:00Z"
             }

@@ -53,20 +53,20 @@ export function TaskCard({
       case 'completed':
         return 'success';
       case 'in_progress':
-        return 'primary';
+        return 'info';
       default:
-        return 'secondary';
+        return 'default';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'error';
+        return 'danger';
       case 'medium':
         return 'warning';
       default:
-        return 'secondary';
+        return 'default';
     }
   };
 

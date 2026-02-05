@@ -80,7 +80,6 @@ export function useShares(taskId?: string) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load shares';
       setError(message);
-      console.error('Error loading shares:', err);
     } finally {
       setLoading(false);
     }
@@ -106,7 +105,6 @@ export function useShares(taskId?: string) {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to share task';
         setError(message);
-        console.error('Error sharing task:', err);
         throw err;
       } finally {
         setLoading(false);
@@ -134,7 +132,6 @@ export function useShares(taskId?: string) {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to revoke share';
         setError(message);
-        console.error('Error revoking share:', err);
         throw err;
       } finally {
         setLoading(false);
@@ -167,7 +164,6 @@ export function useShares(taskId?: string) {
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to update permission';
         setError(message);
-        console.error('Error updating permission:', err);
         throw err;
       } finally {
         setLoading(false);
@@ -236,7 +232,6 @@ export function useSharedTasks() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load shared tasks';
       setError(message);
-      console.error('Error loading shared tasks:', err);
     } finally {
       setLoading(false);
     }

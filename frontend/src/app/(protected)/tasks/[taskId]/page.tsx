@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { getTask, updateTask, deleteTask } from '@/lib/api/tasks';
 import { useShares } from '@/hooks/useShares';
 import { Button } from '@/components/ui/Button';
@@ -18,12 +18,6 @@ import { Alert } from '@/components/ui/Alert';
 import { ShareTaskModal } from '@/components/shared/ShareTaskModal';
 import type { Task } from '@/lib/types/task';
 import { SharePermission } from '@/lib/types/share';
-
-interface TaskDetailPageProps {
-  params: {
-    taskId: string;
-  };
-}
 
 /**
  * Page component for viewing and managing a single task
@@ -39,9 +33,10 @@ interface TaskDetailPageProps {
  * - Show team information
  * - Show access type
  */
-export default function TaskDetailPage({ params }: TaskDetailPageProps) {
+export default function TaskDetailPage() {
   const router = useRouter();
-  const { taskId } = params;
+  const params = useParams();
+  const taskId = params.taskId as string;
 
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,7 +133,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   if (error || !task) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Alert type="error">
+        <Alert variant="error">
           {error || 'Task not found'}
         </Alert>
         <div className="mt-4">
@@ -184,10 +179,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
         {/* Badges */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <Badge variant={task.status === 'completed' ? 'success' : 'primary'}>
+          <Badge variant={task.status === 'completed' ? 'success' : 'info'}>
             {task.status.replace('_', ' ')}
           </Badge>
-          <Badge variant={task.priority === 'high' ? 'error' : 'secondary'}>
+          <Badge variant={task.priority === 'high' ? 'danger' : 'default'}>
             {task.priority}
           </Badge>
           {task.completed && (

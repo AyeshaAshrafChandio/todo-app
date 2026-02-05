@@ -14,6 +14,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskStatus, TaskPriority } from '@/lib/types/task';
 import type { Team } from '@/lib/types/team';
 import { getTeams } from '@/lib/api/teams';
+import { sanitizeInput } from '@/lib/utils/sanitize';
 
 interface TaskFormProps {
   /** Existing task to edit (undefined for create mode) */
@@ -99,9 +100,15 @@ export function TaskForm({
       return;
     }
 
+    // Sanitize user input before submission
+    const sanitizedTitle = sanitizeInput(title.trim());
+    const sanitizedDescription = description.trim()
+      ? sanitizeInput(description.trim())
+      : undefined;
+
     const data: CreateTaskRequest | UpdateTaskRequest = {
-      title: title.trim(),
-      description: description.trim() || undefined,
+      title: sanitizedTitle,
+      description: sanitizedDescription,
       status,
       priority,
       due_date: dueDate || undefined,
@@ -114,7 +121,7 @@ export function TaskForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <Alert type="error">{error}</Alert>
+        <Alert variant="error">{error}</Alert>
       )}
 
       {/* Title */}

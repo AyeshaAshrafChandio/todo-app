@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,8 @@ import { Alert } from '@/components/ui/Alert';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { MemberList } from '@/components/teams/MemberList';
 import { MemberInvite } from '@/components/teams/MemberInvite';
+import { useToast } from '@/contexts/ToastContext';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import * as teamsApi from '@/lib/api/teams';
 import type { Team, TeamMember, TeamRoleType } from '@/lib/types/team';
 
@@ -20,6 +22,8 @@ export default function TeamDetailPage() {
   const params = useParams();
   const router = useRouter();
   const teamId = params.teamId as string;
+  const toast = useToast();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -28,11 +32,7 @@ export default function TeamDetailPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<TeamRoleType | null>(null);
 
-  useEffect(() => {
-    loadTeamData();
-  }, [teamId]);
-
-  const loadTeamData = async () => {
+  const loadTeamData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -53,19 +53,26 @@ export default function TeamDetailPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load team';
       setError(message);
-      console.error('Failed to load team:', err);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [teamId, toast]);
+
+  useEffect(() => {
+    loadTeamData();
+  }, [loadTeamData]);
 
   const handleInviteMember = async (userId: string, role: TeamRoleType) => {
     try {
       const newMember = await teamsApi.addTeamMember(teamId, { user_id: userId, role });
       setMembers((prev) => [...prev, newMember]);
       setShowInviteForm(false);
+      toast.success('Member invited successfully');
     } catch (err) {
-      throw err; // Let MemberInvite component handle the error
+      const message = err instanceof Error ? err.message : 'Failed to invite member';
+      toast.error(message);
+      throw err;
     }
   };
 
@@ -75,30 +82,51 @@ export default function TeamDetailPage() {
       setMembers((prev) =>
         prev.map((m) => (m.user_id === userId ? updatedMember : m))
       );
+      toast.success('Member role updated');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to change role');
+      const message = err instanceof Error ? err.message : 'Failed to change role';
+      setError(message);
+      toast.error(message);
     }
   };
 
   const handleRemoveMember = async (userId: string) => {
+    const confirmed = await confirm(
+      'Remove Member',
+      'Are you sure you want to remove this member from the team?',
+      { variant: 'warning', confirmText: 'Remove' }
+    );
+
+    if (!confirmed) return;
+
     try {
       await teamsApi.removeTeamMember(teamId, userId);
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
+      toast.success('Member removed successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove member');
+      const message = err instanceof Error ? err.message : 'Failed to remove member';
+      setError(message);
+      toast.error(message);
     }
   };
 
   const handleDeleteTeam = async () => {
-    if (!confirm('Are you sure you want to delete this team? This action cannot be undone.')) {
-      return;
-    }
+    const confirmed = await confirm(
+      'Delete Team',
+      'Are you sure you want to delete this team? This will remove all team members and cannot be undone.',
+      { variant: 'danger', confirmText: 'Delete Team' }
+    );
+
+    if (!confirmed) return;
 
     try {
       await teamsApi.deleteTeam(teamId);
+      toast.success('Team deleted successfully');
       router.push('/teams');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete team');
+      const message = err instanceof Error ? err.message : 'Failed to delete team';
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -133,6 +161,7 @@ export default function TeamDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {ConfirmDialog}
       {/* Page Header */}
       <div className="flex items-start justify-between">
         <div className="flex-1">
@@ -168,7 +197,7 @@ export default function TeamDetailPage() {
       </div>
 
       {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}

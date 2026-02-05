@@ -33,7 +33,6 @@ export function useTeamDetails(teamId: string): UseTeamDetailsReturn {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load team';
       setError(message);
-      console.error('Failed to load team:', err);
       throw err;
     }
   }, [teamId]);
@@ -47,7 +46,6 @@ export function useTeamDetails(teamId: string): UseTeamDetailsReturn {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load members';
       setError(message);
-      console.error('Failed to load members:', err);
       throw err;
     }
   }, [teamId]);

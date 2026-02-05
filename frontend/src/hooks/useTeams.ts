@@ -34,7 +34,6 @@ export function useTeams(): UseTeamsReturn {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load teams';
       setError(message);
-      console.error('Failed to load teams:', err);
     } finally {
       setLoading(false);
     }

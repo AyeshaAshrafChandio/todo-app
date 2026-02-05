@@ -1,0 +1,346 @@
+openapi: 3.0.3
+info:
+  title: Todo Authentication API
+  description: |
+    Authentication endpoints for the Todo application.
+    Provides user registration, login, and JWT token management.
+  version: 1.0.0
+  contact:
+    name: Todo API Support
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.todo.example.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and registration endpoints
+
+paths:
+  /api/auth/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: |
+        Create a new user account with email and password.
+        Returns a JWT token upon successful registration.
+      operationId: signup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+            examples:
+              valid:
+                summary: Valid signup request
+                value:
+                  email: user@example.com
+                  password: SecurePass123
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                success:
+                  summary: Successful registration
+                  value:
+                    user:
+                      id: 550e8400-e29b-41d4-a716-446655440000
+                      email: user@example.com
+                      created_at: '2026-02-04T10:30:00Z'
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    expires_at: '2026-02-05T10:30:00Z'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                email_exists:
+                  summary: Email already registered
+                  value:
+                    detail: Email already registered
+                    error_code: EMAIL_EXISTS
+                weak_password:
+                  summary: Password too weak
+                  value:
+                    detail: Password must contain at least one uppercase letter, one lowercase letter, and one digit
+                    error_code: WEAK_PASSWORD
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/signin:
+    post:
+      tags:
+        - Authentication
+      summary: Login with existing credentials
+      description: |
+        Authenticate with email and password.
+        Returns a JWT token upon successful login.
+      operationId: signin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SigninRequest'
+            examples:
+              valid:
+                summary: Valid login request
+                value:
+                  email: user@example.com
+                  password: SecurePass123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                success:
+                  summary: Successful login
+                  value:
+                    user:
+                      id: 550e8400-e29b-41d4-a716-446655440000
+                      email: user@example.com
+                      created_at: '2026-02-04T10:30:00Z'
+                    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    expires_at: '2026-02-05T10:30:00Z'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+              examples:
+                invalid_credentials:
+                  summary: Invalid email or password
+                  value:
+                    detail: Invalid email or password
+                    error_code: INVALID_CREDENTIALS
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user information
+      description: |
+        Retrieve information about the currently authenticated user.
+        Requires valid JWT token in Authorization header.
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+              examples:
+                success:
+                  summary: Current user info
+                  value:
+                    id: 550e8400-e29b-41d4-a716-446655440000
+                    email: user@example.com
+                    created_at: '2026-02-04T10:30:00Z'
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+              examples:
+                missing_token:
+                  summary: No token provided
+                  value:
+                    detail: Authentication required. Please provide a valid token.
+                    error_code: TOKEN_MISSING
+                expired_token:
+                  summary: Token expired
+                  value:
+                    detail: Token expired. Please log in again.
+                    error_code: TOKEN_EXPIRED
+                invalid_token:
+                  summary: Invalid token
+                  value:
+                    detail: Invalid token signature.
+                    error_code: TOKEN_INVALID
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from /api/auth/signup or /api/auth/signin.
+        Include in Authorization header as: Bearer <token>
+
+  schemas:
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: User's email address (must be unique)
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: |
+            User's password. Must be at least 8 characters and contain:
+            - At least one uppercase letter
+            - At least one lowercase letter
+            - At least one digit
+          example: SecurePass123
+
+    SigninRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          description: User's password
+          example: SecurePass123
+
+    UserResponse:
+      type: object
+      required:
+        - id
+        - email
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the user
+          example: 550e8400-e29b-41d4-a716-446655440000
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: user@example.com
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when user account was created (UTC)
+          example: '2026-02-04T10:30:00Z'
+
+    AuthResponse:
+      type: object
+      required:
+        - user
+        - token
+        - expires_at
+      properties:
+        user:
+          $ref: '#/components/schemas/UserResponse'
+        token:
+          type: string
+          description: JWT access token (valid for 24 hours)
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJpYXQiOjE3MDY5NzYwMDAsImV4cCI6MTcwNzA2MjQwMH0.signature
+        expires_at:
+          type: string
+          format: date-time
+          description: Timestamp when token expires (UTC)
+          example: '2026-02-05T10:30:00Z'
+
+    AuthError:
+      type: object
+      required:
+        - detail
+        - error_code
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: Invalid email or password
+        error_code:
+          type: string
+          enum:
+            - INVALID_CREDENTIALS
+            - TOKEN_MISSING
+            - TOKEN_EXPIRED
+            - TOKEN_INVALID
+            - EMAIL_EXISTS
+            - WEAK_PASSWORD
+          description: Machine-readable error code
+          example: INVALID_CREDENTIALS
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp when error occurred (UTC)
+          example: '2026-02-04T10:30:00Z'
+
+    ValidationError:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          oneOf:
+            - type: string
+              description: Simple error message
+            - type: array
+              description: Detailed validation errors
+              items:
+                type: object
+                properties:
+                  loc:
+                    type: array
+                    items:
+                      type: string
+                    description: Location of the error (e.g., ["body", "email"])
+                  msg:
+                    type: string
+                    description: Error message
+                  type:
+                    type: string
+                    description: Error type
+        error_code:
+          type: string
+          description: Machine-readable error code
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: Internal server error

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { TeamForm } from '@/components/teams/TeamForm';
+import { useToast } from '@/contexts/ToastContext';
 import * as teamsApi from '@/lib/api/teams';
 import type { Team, UpdateTeamRequest } from '@/lib/types/team';
 
@@ -18,18 +19,14 @@ export default function TeamSettingsPage() {
   const params = useParams();
   const router = useRouter();
   const teamId = params.teamId as string;
+  const toast = useToast();
 
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTeam();
-  }, [teamId]);
-
-  const loadTeam = async () => {
+  const loadTeam = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -39,21 +36,24 @@ export default function TeamSettingsPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load team';
       setError(message);
-      console.error('Failed to load team:', err);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [teamId, toast]);
+
+  useEffect(() => {
+    loadTeam();
+  }, [loadTeam]);
 
   const handleSubmit = async (data: UpdateTeamRequest) => {
     setIsSubmitting(true);
     setError(null);
-    setSuccessMessage(null);
 
     try {
       const updatedTeam = await teamsApi.updateTeam(teamId, data);
       setTeam(updatedTeam);
-      setSuccessMessage('Team settings updated successfully');
+      toast.success('Team settings updated successfully');
 
       // Redirect back to team detail page after a short delay
       setTimeout(() => {
@@ -62,8 +62,9 @@ export default function TeamSettingsPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update team';
       setError(message);
+      toast.error(message);
       setIsSubmitting(false);
-      throw err; // Let TeamForm handle the error display
+      throw err;
     }
   };
 
@@ -110,16 +111,9 @@ export default function TeamSettingsPage() {
         </Button>
       </div>
 
-      {/* Success Message */}
-      {successMessage && (
-        <Alert variant="success" onClose={() => setSuccessMessage(null)}>
-          {successMessage}
-        </Alert>
-      )}
-
       {/* Error Message */}
       {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}

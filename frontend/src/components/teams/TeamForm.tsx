@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import type { CreateTeamRequest, UpdateTeamRequest } from '@/lib/types/team';
+import { sanitizeInput } from '@/lib/utils/sanitize';
 
 interface TeamFormProps {
   initialData?: UpdateTeamRequest;
@@ -52,7 +53,15 @@ export function TeamForm({
     }
 
     try {
-      await onSubmit(formData);
+      // Sanitize user input before submission
+      const sanitizedData: CreateTeamRequest = {
+        name: sanitizeInput(formData.name.trim()),
+        description: formData.description?.trim()
+          ? sanitizeInput(formData.description.trim())
+          : undefined,
+      };
+
+      await onSubmit(sanitizedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save team');
     }
@@ -61,7 +70,7 @@ export function TeamForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}

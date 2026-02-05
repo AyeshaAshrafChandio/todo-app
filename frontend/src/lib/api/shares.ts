@@ -35,11 +35,13 @@ export async function shareTask(
   taskId: string,
   request: ShareTaskRequest
 ): Promise<ShareTaskResponse> {
-  const response = await apiClient.post<ShareTaskResponse>(
+  return apiClient<ShareTaskResponse>(
     `/tasks/${taskId}/share`,
-    request
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }
   );
-  return response.data;
 }
 
 /**
@@ -60,10 +62,12 @@ export async function revokeShare(
   taskId: string,
   userId: string
 ): Promise<{ message: string }> {
-  const response = await apiClient.delete<{ message: string }>(
-    `/tasks/${taskId}/share/${userId}`
+  return apiClient<{ message: string }>(
+    `/tasks/${taskId}/share/${userId}`,
+    {
+      method: 'DELETE',
+    }
   );
-  return response.data;
 }
 
 /**
@@ -83,10 +87,7 @@ export async function revokeShare(
  * ```
  */
 export async function getTaskShares(taskId: string): Promise<TaskSharesResponse> {
-  const response = await apiClient.get<TaskSharesResponse>(
-    `/tasks/${taskId}/shares`
-  );
-  return response.data;
+  return apiClient<TaskSharesResponse>(`/tasks/${taskId}/shares`);
 }
 
 /**
@@ -105,8 +106,7 @@ export async function getTaskShares(taskId: string): Promise<TaskSharesResponse>
  * ```
  */
 export async function getSharedTasks(): Promise<SharedTasksResponse> {
-  const response = await apiClient.get<SharedTasksResponse>('/tasks/shared-with-me');
-  return response.data;
+  return apiClient<SharedTasksResponse>('/tasks/shared-with-me');
 }
 
 /**
@@ -133,11 +133,13 @@ export async function updateSharePermission(
   userId: string,
   permission: string
 ): Promise<TaskShare> {
-  const response = await apiClient.patch<TaskShare>(
+  return apiClient<TaskShare>(
     `/tasks/${taskId}/share/${userId}`,
-    { permission }
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ permission }),
+    }
   );
-  return response.data;
 }
 
 /**

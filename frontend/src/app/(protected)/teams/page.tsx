@@ -1,18 +1,28 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTeams } from '@/hooks/useTeams';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ListSkeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/contexts/ToastContext';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { CreateTeamRequest } from '@/lib/types/team';
+
+// Note: Metadata cannot be exported from Client Components
+// For dynamic metadata in client components, use next/head or document.title
 
 /**
  * Teams page - List and manage all teams
  * Client Component - requires authentication and data fetching
  */
 export default function TeamsPage() {
+  const router = useRouter();
   const { teams, loading, createTeam, updateTeam, deleteTeam } = useTeams();
+  const toast = useToast();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState<CreateTeamRequest>({
     name: '',
@@ -25,22 +35,32 @@ export default function TeamsPage() {
       await createTeam(formData);
       setFormData({ name: '', description: '' });
       setShowCreateForm(false);
+      toast.success('Team created successfully');
     } catch (err) {
-      console.error('Failed to create team:', err);
+      toast.error('Failed to create team. Please try again.');
     }
   };
 
   const handleDeleteTeam = async (teamId: string) => {
-    if (!confirm('Are you sure you want to delete this team?')) return;
+    const confirmed = await confirm(
+      'Delete Team',
+      'Are you sure you want to delete this team? This will remove all team members and cannot be undone.',
+      { variant: 'danger', confirmText: 'Delete' }
+    );
+
+    if (!confirmed) return;
+
     try {
       await deleteTeam(teamId);
+      toast.success('Team deleted successfully');
     } catch (err) {
-      console.error('Failed to delete team:', err);
+      toast.error('Failed to delete team');
     }
   };
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -104,11 +124,7 @@ export default function TeamsPage() {
       {/* Teams List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
-          <Card>
-            <CardBody>
-              <div className="text-center py-8 text-gray-500">Loading teams...</div>
-            </CardBody>
-          </Card>
+          <ListSkeleton count={6} />
         ) : teams.length === 0 ? (
           <Card className="col-span-full">
             <CardBody>
@@ -154,10 +170,7 @@ export default function TeamsPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => {
-                        // TODO: Navigate to team details page
-                        console.log('View team:', team.id);
-                      }}
+                      onClick={() => router.push(`/teams/${team.id}`)}
                     >
                       View
                     </Button>

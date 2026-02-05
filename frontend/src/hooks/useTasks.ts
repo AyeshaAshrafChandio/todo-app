@@ -55,7 +55,6 @@ export function useTasks(initialFilters?: UseTasksFilters): UseTasksReturn {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load tasks';
       setError(message);
-      console.error('Failed to load tasks:', err);
     } finally {
       setLoading(false);
     }

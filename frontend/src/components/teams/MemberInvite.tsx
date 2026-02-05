@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import { RoleSelector } from './RoleSelector';
 import type { TeamRoleType } from '@/lib/types/team';
+import { sanitizeInput } from '@/lib/utils/sanitize';
 
 interface MemberInviteProps {
   onInvite: (userId: string, role: TeamRoleType) => Promise<void>;
@@ -39,7 +40,9 @@ export function MemberInvite({
     }
 
     try {
-      await onInvite(userId, role);
+      // Sanitize user input before submission
+      const sanitizedUserId = sanitizeInput(userId.trim());
+      await onInvite(sanitizedUserId, role);
       setSuccess('Member invited successfully');
       setUserId('');
       setRole('member');
@@ -51,13 +54,13 @@ export function MemberInvite({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <Alert variant="error" onClose={() => setError(null)}>
+        <Alert variant="error">
           {error}
         </Alert>
       )}
 
       {success && (
-        <Alert variant="success" onClose={() => setSuccess(null)}>
+        <Alert variant="success">
           {success}
         </Alert>
       )}

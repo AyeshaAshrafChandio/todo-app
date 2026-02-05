@@ -5,7 +5,13 @@ import { useTasks } from '@/hooks/useTasks';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ListSkeleton } from '@/components/ui/Skeleton';
+import { useToast } from '@/contexts/ToastContext';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { CreateTaskRequest, TaskStatus, TaskPriority } from '@/lib/types/task';
+
+// Note: Metadata cannot be exported from Client Components
+// For dynamic metadata in client components, use next/head or document.title
 
 /**
  * Tasks page - List and manage all tasks
@@ -13,6 +19,8 @@ import type { CreateTaskRequest, TaskStatus, TaskPriority } from '@/lib/types/ta
  */
 export default function TasksPage() {
   const { tasks, loading, createTask, updateTask, deleteTask } = useTasks();
+  const toast = useToast();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState<CreateTaskRequest>({
     title: '',
@@ -37,30 +45,41 @@ export default function TasksPage() {
         priority: 'medium',
       });
       setShowCreateForm(false);
+      toast.success('Task created successfully');
     } catch (err) {
-      console.error('Failed to create task:', err);
+      toast.error('Failed to create task. Please try again.');
     }
   };
 
   const handleStatusChange = async (taskId: string, status: TaskStatus) => {
     try {
       await updateTask(taskId, { status });
+      toast.success('Task status updated');
     } catch (err) {
-      console.error('Failed to update task:', err);
+      toast.error('Failed to update task status');
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    const confirmed = await confirm(
+      'Delete Task',
+      'Are you sure you want to delete this task? This action cannot be undone.',
+      { variant: 'danger', confirmText: 'Delete' }
+    );
+
+    if (!confirmed) return;
+
     try {
       await deleteTask(taskId);
+      toast.success('Task deleted successfully');
     } catch (err) {
-      console.error('Failed to delete task:', err);
+      toast.error('Failed to delete task');
     }
   };
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -178,11 +197,7 @@ export default function TasksPage() {
       {/* Tasks List */}
       <div className="space-y-4">
         {loading ? (
-          <Card>
-            <CardBody>
-              <div className="text-center py-8 text-gray-500">Loading tasks...</div>
-            </CardBody>
-          </Card>
+          <ListSkeleton count={5} />
         ) : filteredTasks.length === 0 ? (
           <Card>
             <CardBody>

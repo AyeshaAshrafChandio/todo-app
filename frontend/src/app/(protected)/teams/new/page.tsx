@@ -6,7 +6,7 @@ import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TeamForm } from '@/components/teams/TeamForm';
 import { useTeams } from '@/hooks/useTeams';
-import type { CreateTeamRequest } from '@/lib/types/team';
+import type { CreateTeamRequest, UpdateTeamRequest } from '@/lib/types/team';
 
 /**
  * New Team Page - Create a new team
@@ -17,10 +17,13 @@ export default function NewTeamPage() {
   const { createTeam } = useTeams();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (data: CreateTeamRequest) => {
+  const handleSubmit = async (data: CreateTeamRequest | UpdateTeamRequest) => {
     setIsSubmitting(true);
     try {
-      const newTeam = await createTeam(data);
+      const newTeam = await createTeam({
+        name: data.name || '',
+        description: data.description,
+      });
       // Navigate to the new team's detail page
       router.push(`/teams/${newTeam.id}`);
     } catch (error) {

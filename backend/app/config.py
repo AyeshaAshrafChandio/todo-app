@@ -46,6 +46,19 @@ class Settings:
         "http://localhost:3000,http://localhost:3001"
     ).split(",")
 
+    # Authentication Configuration (Spec 2)
+    BETTER_AUTH_SECRET: str = os.getenv("BETTER_AUTH_SECRET", "")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_EXPIRATION_SECONDS: int = int(os.getenv("JWT_EXPIRATION_SECONDS", "86400"))
+
+    def __init__(self):
+        """Validate required configuration on initialization."""
+        if not self.BETTER_AUTH_SECRET:
+            raise ValueError(
+                "BETTER_AUTH_SECRET environment variable is required. "
+                "Generate one using: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+
     def __repr__(self) -> str:
         """String representation (masks sensitive data)."""
         return (

@@ -111,7 +111,7 @@ export function ShareTaskModal({
         {/* Body */}
         <form onSubmit={handleSubmit} className="px-6 py-4">
           {error && (
-            <Alert type="error" className="mb-4">
+            <Alert variant="error" className="mb-4">
               {error}
             </Alert>
           )}

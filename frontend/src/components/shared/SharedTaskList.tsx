@@ -9,7 +9,7 @@
 
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
-import { Spinner } from '@/components/ui/Spinner';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import { Alert } from '@/components/ui/Alert';
 import type { SharedTask } from '@/lib/types/share';
 import { SharePermission } from '@/lib/types/share';
@@ -56,18 +56,13 @@ export function SharedTaskList({
 }: SharedTaskListProps) {
   // Loading state
   if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <Spinner size="lg" />
-        <span className="ml-3 text-gray-600">Loading shared tasks...</span>
-      </div>
-    );
+    return <ListSkeleton count={5} />;
   }
 
   // Error state
   if (error) {
     return (
-      <Alert type="error" className="mb-4">
+      <Alert variant="error" className="mb-4">
         <div className="flex items-center justify-between">
           <span>{error}</span>
           {onRetry && (
@@ -230,8 +225,8 @@ export function SharedTaskList({
               <Badge
                 variant={
                   task.permission === SharePermission.EDIT
-                    ? 'primary'
-                    : 'secondary'
+                    ? 'info'
+                    : 'default'
                 }
               >
                 {task.permission === SharePermission.EDIT
