@@ -9,8 +9,8 @@ import type { NextRequest } from 'next/server';
 // Public routes that don't require authentication
 const publicRoutes = ['/login', '/register', '/'];
 
-// Protected routes that require authentication
-const protectedRoutes = ['/dashboard'];
+// Protected route prefixes that require authentication
+const protectedRoutes = ['/dashboard', '/tasks', '/teams', '/chat', '/shared'];
 
 /**
  * Check if route is public
