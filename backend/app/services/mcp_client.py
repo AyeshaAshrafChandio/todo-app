@@ -2,11 +2,20 @@
 MCPClient for invoking MCP tools from the AI agent.
 
 This client provides a bridge between the OpenAI Agent and MCP tools,
-handling tool registration and invocation (Spec 005).
+handling tool registration and invocation (Spec 005 + Spec 006).
+
+Updated in Spec 006 to use production MCP tool handlers.
 """
 
 from typing import Dict, Any, List, Optional
 import logging
+from app.services.mcp_tools import (
+    add_task,
+    list_tasks,
+    get_task,
+    update_task_tool,
+    delete_task_tool
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,31 +25,48 @@ class MCPClient:
     Client for invoking MCP (Model Context Protocol) tools.
 
     This client manages tool registration and invocation for the AI agent.
-    In MVP, tools are placeholders that will be replaced with actual MCP
-    tool server integration in Spec 006.
+    Production tools implemented in Spec 006 (MCP Task Tools).
 
     Attributes:
-        tools: Dictionary of registered tools
+        tools: Dictionary of registered tool handlers
     """
 
     def __init__(self):
-        """Initialize the MCP client with placeholder tools."""
+        """Initialize the MCP client with production tools."""
         self.tools = self._register_tools()
 
-    def _register_tools(self) -> Dict[str, Dict[str, Any]]:
+    def _register_tools(self) -> Dict[str, Any]:
         """
-        Register available MCP tools.
+        Register production MCP tool handlers.
+
+        Returns:
+            Dictionary mapping tool names to tool handler functions
+
+        Note:
+            Production implementation from Spec 006 (MCP Task Tools).
+            All tools delegate to existing service layer and enforce authorization.
+        """
+        return {
+            "add_task": add_task,
+            "list_tasks": list_tasks,
+            "get_task": get_task,
+            "update_task": update_task_tool,
+            "delete_task": delete_task_tool
+        }
+
+    def get_tool_definitions_legacy(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get legacy tool definitions (for backward compatibility).
 
         Returns:
             Dictionary mapping tool names to tool definitions
 
         Note:
-            These are placeholder definitions. Actual implementation
-            will be in Spec 006 (MCP Tool Server).
+            Kept for backward compatibility. New code should use get_tool_definitions().
         """
         return {
             "create_task": {
-                "name": "create_task",
+                "name": "add_task",
                 "description": "Create a new task for the user",
                 "parameters": {
                     "type": "object",
@@ -134,6 +160,7 @@ class MCPClient:
         Returns:
             List of tool definitions in OpenAI function calling format
         """
+        legacy_defs = self.get_tool_definitions_legacy()
         return [
             {
                 "type": "function",
@@ -143,7 +170,7 @@ class MCPClient:
                     "parameters": tool["parameters"]
                 }
             }
-            for tool in self.tools.values()
+            for tool in legacy_defs.values()
         ]
 
     async def invoke_tool(
@@ -153,7 +180,7 @@ class MCPClient:
         user_id: str
     ) -> Dict[str, Any]:
         """
-        Invoke an MCP tool with the given arguments.
+        Invoke a production MCP tool with the given arguments.
 
         Args:
             tool_name: Name of the tool to invoke
@@ -167,25 +194,40 @@ class MCPClient:
             ValueError: If tool is not found
 
         Note:
-            This is a placeholder implementation. Actual tool invocation
-            will be implemented in Spec 006 (MCP Tool Server).
+            Production implementation from Spec 006 (MCP Task Tools).
+            All tools delegate to existing service layer.
         """
-        if tool_name not in self.tools:
+        # Map legacy tool names to new tool names
+        tool_name_map = {
+            "create_task": "add_task",
+            "add_task": "add_task",
+            "list_tasks": "list_tasks",
+            "get_task": "get_task",
+            "update_task": "update_task",
+            "delete_task": "delete_task"
+        }
+
+        mapped_tool_name = tool_name_map.get(tool_name, tool_name)
+
+        if mapped_tool_name not in self.tools:
             raise ValueError(f"Tool '{tool_name}' not found")
 
         logger.info(
-            f"Tool invocation: {tool_name}",
+            f"Tool invocation: {mapped_tool_name}",
             extra={
-                "tool": tool_name,
+                "tool": mapped_tool_name,
                 "arguments": arguments,
                 "user_id": user_id
             }
         )
 
-        # Placeholder implementation - return mock success response
-        # TODO: Replace with actual MCP tool server invocation in Spec 006
-        return {
-            "success": True,
-            "tool": tool_name,
-            "result": f"Placeholder: {tool_name} would be executed with {arguments}"
-        }
+        # Get the tool handler function
+        tool_handler = self.tools[mapped_tool_name]
+
+        # Add user_id to arguments
+        tool_args = {**arguments, "user_id": user_id}
+
+        # Invoke the production tool handler
+        result = await tool_handler(**tool_args)
+
+        return result
