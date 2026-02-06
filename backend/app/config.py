@@ -51,12 +51,23 @@ class Settings:
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
     JWT_EXPIRATION_SECONDS: int = int(os.getenv("JWT_EXPIRATION_SECONDS", "86400"))
 
+    # OpenAI Configuration (Spec 005 - AI Chat Backend)
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4")
+    OPENAI_MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "4096"))
+
     def __init__(self):
         """Validate required configuration on initialization."""
         if not self.BETTER_AUTH_SECRET:
             raise ValueError(
                 "BETTER_AUTH_SECRET environment variable is required. "
                 "Generate one using: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
+            )
+
+        if not self.OPENAI_API_KEY:
+            raise ValueError(
+                "OPENAI_API_KEY environment variable is required for AI Chat Backend. "
+                "Get your API key from: https://platform.openai.com/api-keys"
             )
 
     def __repr__(self) -> str:

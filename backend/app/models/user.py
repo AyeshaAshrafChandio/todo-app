@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from .team import Team
     from .team_member import TeamMember
     from .task_share import TaskShare
+    from .conversation import Conversation
+    from .message import Message
 
 
 class User(SQLModel, table=True):
@@ -114,6 +116,17 @@ class User(SQLModel, table=True):
             "foreign_keys": "TaskShare.shared_by_user_id",
             "cascade": "all, delete-orphan"
         }
+    )
+
+    # Relationships (NEW - Spec 005: AI Chat Backend)
+    conversations: List["Conversation"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+    messages: List["Message"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
     class Config:
