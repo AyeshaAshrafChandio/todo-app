@@ -7,11 +7,14 @@ relationship between users and teams, with an additional role attribute for RBAC
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
-from sqlmodel import Field, SQLModel, Column
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import Field, SQLModel, Column, Relationship
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.types import Enum as SQLAlchemyEnum
 import uuid
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class TeamRole(str, Enum):
@@ -123,6 +126,9 @@ class TeamMember(SQLModel, table=True):
         default_factory=datetime.utcnow,
         description="Timestamp when user joined the team (UTC)"
     )
+
+    # Relationships
+    user: Optional["User"] = Relationship(back_populates="team_memberships")
 
     class Config:
         """Pydantic configuration for the TeamMember model."""

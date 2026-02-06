@@ -105,7 +105,7 @@ import {
 
 // Example: Login flow
 async function handleLogin(email: string, password: string) {
-  const response = await fetch('/api/auth/login', {
+  const response = await fetch('/api/auth/signin', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -114,7 +114,7 @@ async function handleLogin(email: string, password: string) {
   const data = await response.json();
 
   // Create session with token and user data
-  createSession(data.access_token, data.user);
+  createSession(data.token, data.user);
 
   // Redirect to dashboard
   window.location.href = '/dashboard';

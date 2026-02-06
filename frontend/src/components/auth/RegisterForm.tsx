@@ -38,6 +38,12 @@ export function RegisterForm() {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/[A-Z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter';
+    } else if (!/[a-z]/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one lowercase letter';
+    } else if (!/\d/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one digit';
     }
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
@@ -103,7 +109,7 @@ export function RegisterForm() {
               placeholder="At least 8 characters"
               required
               autoComplete="new-password"
-              helperText="Must be at least 8 characters"
+              helperText="Must be at least 8 characters with uppercase, lowercase, and digit"
             />
 
             <Input

@@ -7,11 +7,14 @@ tasks with other users outside of team context, with view or edit permissions.
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
-from sqlmodel import Field, SQLModel, Column
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import Field, SQLModel, Column, Relationship
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.types import Enum as SQLAlchemyEnum
 import uuid
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class SharePermission(str, Enum):
@@ -133,6 +136,17 @@ class TaskShare(SQLModel, table=True):
     shared_at: datetime = Field(
         default_factory=datetime.utcnow,
         description="Timestamp when task was shared (UTC)"
+    )
+
+    # Relationships
+    shared_with_user: Optional["User"] = Relationship(
+        back_populates="received_shares",
+        sa_relationship_kwargs={"foreign_keys": "[TaskShare.shared_with_user_id]"}
+    )
+
+    shared_by_user: Optional["User"] = Relationship(
+        back_populates="given_shares",
+        sa_relationship_kwargs={"foreign_keys": "[TaskShare.shared_by_user_id]"}
     )
 
     class Config:

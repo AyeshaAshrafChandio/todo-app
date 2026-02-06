@@ -1,5 +1,17 @@
 import { apiClient } from './client';
+import { getUserIdFromToken } from '../auth/token';
 import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskShare } from '../types/task';
+
+/**
+ * Get current user ID from token
+ */
+function getCurrentUserId(): string {
+  const userId = getUserIdFromToken();
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+  return userId;
+}
 
 /**
  * Get all tasks for current user
@@ -15,13 +27,14 @@ export async function getTasks(filters?: {
   access_type?: string;
   status?: string;
 }): Promise<Task[]> {
+  const userId = getCurrentUserId();
   const params = new URLSearchParams();
   if (filters?.team_id) params.append('team_id', filters.team_id);
   if (filters?.access_type) params.append('access_type', filters.access_type);
   if (filters?.status) params.append('status', filters.status);
 
   const queryString = params.toString();
-  const url = queryString ? `/api/tasks?${queryString}` : '/api/tasks';
+  const url = queryString ? `/api/${userId}/tasks?${queryString}` : `/api/${userId}/tasks`;
 
   return apiClient<Task[]>(url);
 }
@@ -30,14 +43,16 @@ export async function getTasks(filters?: {
  * Get a single task by ID
  */
 export async function getTask(taskId: string): Promise<Task> {
-  return apiClient<Task>(`/api/tasks/${taskId}`);
+  const userId = getCurrentUserId();
+  return apiClient<Task>(`/api/${userId}/tasks/${taskId}`);
 }
 
 /**
  * Create a new task
  */
 export async function createTask(data: CreateTaskRequest): Promise<Task> {
-  return apiClient<Task>('/api/tasks', {
+  const userId = getCurrentUserId();
+  return apiClient<Task>(`/api/${userId}/tasks`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -47,7 +62,8 @@ export async function createTask(data: CreateTaskRequest): Promise<Task> {
  * Update a task
  */
 export async function updateTask(taskId: string, data: UpdateTaskRequest): Promise<Task> {
-  return apiClient<Task>(`/api/tasks/${taskId}`, {
+  const userId = getCurrentUserId();
+  return apiClient<Task>(`/api/${userId}/tasks/${taskId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -57,7 +73,8 @@ export async function updateTask(taskId: string, data: UpdateTaskRequest): Promi
  * Delete a task
  */
 export async function deleteTask(taskId: string): Promise<void> {
-  return apiClient<void>(`/api/tasks/${taskId}`, {
+  const userId = getCurrentUserId();
+  return apiClient<void>(`/api/${userId}/tasks/${taskId}`, {
     method: 'DELETE',
   });
 }
@@ -66,7 +83,8 @@ export async function deleteTask(taskId: string): Promise<void> {
  * Get tasks shared with current user
  */
 export async function getSharedTasks(): Promise<Task[]> {
-  return apiClient<Task[]>('/api/tasks/shared');
+  const userId = getCurrentUserId();
+  return apiClient<Task[]>(`/api/${userId}/tasks/shared`);
 }
 
 /**
@@ -77,7 +95,8 @@ export async function shareTask(
   userId: string,
   permission: 'view' | 'edit'
 ): Promise<TaskShare> {
-  return apiClient<TaskShare>(`/api/tasks/${taskId}/share`, {
+  const currentUserId = getCurrentUserId();
+  return apiClient<TaskShare>(`/api/${currentUserId}/tasks/${taskId}/share`, {
     method: 'POST',
     body: JSON.stringify({ user_id: userId, permission }),
   });
@@ -87,14 +106,16 @@ export async function shareTask(
  * Get task shares
  */
 export async function getTaskShares(taskId: string): Promise<TaskShare[]> {
-  return apiClient<TaskShare[]>(`/api/tasks/${taskId}/shares`);
+  const userId = getCurrentUserId();
+  return apiClient<TaskShare[]>(`/api/${userId}/tasks/${taskId}/shares`);
 }
 
 /**
  * Remove task share
  */
 export async function removeTaskShare(taskId: string, shareId: string): Promise<void> {
-  return apiClient<void>(`/api/tasks/${taskId}/shares/${shareId}`, {
+  const userId = getCurrentUserId();
+  return apiClient<void>(`/api/${userId}/tasks/${taskId}/shares/${shareId}`, {
     method: 'DELETE',
   });
 }

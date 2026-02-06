@@ -6,10 +6,13 @@ and have multiple members with different roles.
 """
 
 from datetime import datetime
-from typing import Optional
-from sqlmodel import Field, SQLModel, Column
+from typing import Optional, TYPE_CHECKING
+from sqlmodel import Field, SQLModel, Column, Relationship
 from sqlalchemy import ForeignKey
 import uuid
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class Team(SQLModel, table=True):
@@ -120,6 +123,9 @@ class Team(SQLModel, table=True):
         sa_column_kwargs={"onupdate": datetime.utcnow},
         description="Timestamp when team was last modified (UTC)"
     )
+
+    # Relationships
+    owner: Optional["User"] = Relationship(back_populates="owned_teams")
 
     class Config:
         """Pydantic configuration for the Team model."""
