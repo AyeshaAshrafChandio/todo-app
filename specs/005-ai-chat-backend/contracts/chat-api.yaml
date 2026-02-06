@@ -1,0 +1,340 @@
+openapi: 3.0.3
+info:
+  title: AI Chat Backend API
+  description: |
+    Stateless chat API for natural language task management using OpenAI Agents SDK.
+
+    This API enables users to manage their todo tasks through conversational interactions.
+    The system maintains conversation history in the database, enabling stateless architecture
+    and conversation resume after server restarts.
+
+    **Authentication**: All endpoints require JWT authentication via Bearer token.
+
+    **Constitutional Alignment**:
+    - Stateless Architecture (Principle VI): No in-memory session state
+    - Agent Behavior Constraints (Principle VII): Agents decide, tools execute
+    - Security by Design (Principle IV): JWT authentication, user-scoped data
+  version: 1.0.0
+  contact:
+    name: Todo App Team
+    email: support@todoapp.example.com
+
+servers:
+  - url: http://localhost:8001
+    description: Local development server
+  - url: https://api.todoapp.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Chat
+    description: Conversational task management endpoints
+
+paths:
+  /api/chat:
+    post:
+      tags:
+        - Chat
+      summary: Send chat message
+      description: |
+        Send a message to the AI assistant for task management. The assistant can:
+        - Create tasks ("Add buy groceries to my list")
+        - List tasks ("Show me my tasks")
+        - Update tasks ("Mark buy groceries as done")
+        - Delete tasks ("Remove buy groceries")
+
+        **Conversation Flow**:
+        1. First message: Send with `conversation_id: null` to start new conversation
+        2. Subsequent messages: Include `conversation_id` from previous response
+        3. Resume: Use existing `conversation_id` to continue after server restart
+
+        **Stateless Architecture**:
+        - Server loads conversation history from database on each request
+        - No in-memory session state maintained
+        - Conversation context reconstructed from database
+      operationId: sendChatMessage
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              newConversation:
+                summary: Start new conversation
+                value:
+                  conversation_id: null
+                  message: "Add buy groceries to my list"
+              continueConversation:
+                summary: Continue existing conversation
+                value:
+                  conversation_id: 42
+                  message: "Show me my tasks"
+              resumeConversation:
+                summary: Resume after server restart
+                value:
+                  conversation_id: 42
+                  message: "Mark the first task as done"
+      responses:
+        '200':
+          description: Successful response from AI assistant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                taskCreated:
+                  summary: Task created successfully
+                  value:
+                    conversation_id: 42
+                    response: "I've added 'buy groceries' to your task list."
+                    tool_calls:
+                      - tool: "create_task"
+                        arguments:
+                          title: "buy groceries"
+                          description: ""
+                tasksList:
+                  summary: Tasks listed
+                  value:
+                    conversation_id: 42
+                    response: "You have 3 tasks: 1. Buy groceries (pending), 2. Call dentist (pending), 3. Finish report (completed)"
+                    tool_calls:
+                      - tool: "list_tasks"
+                        arguments: {}
+                clarification:
+                  summary: Agent asks for clarification
+                  value:
+                    conversation_id: 42
+                    response: "What task would you like to add?"
+                    tool_calls: []
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingMessage:
+                  summary: Missing message field
+                  value:
+                    error: "Validation Error"
+                    detail: "Field 'message' is required"
+                messageTooLong:
+                  summary: Message exceeds length limit
+                  value:
+                    error: "Validation Error"
+                    detail: "Message too long (max 10,000 characters)"
+        '401':
+          description: Unauthorized - missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingToken:
+                  summary: Missing authorization header
+                  value:
+                    error: "Unauthorized"
+                    detail: "Missing authorization header"
+                invalidToken:
+                  summary: Invalid JWT token
+                  value:
+                    error: "Unauthorized"
+                    detail: "Invalid or expired token"
+        '403':
+          description: Forbidden - user attempting to access another user's conversation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                wrongUser:
+                  summary: Conversation belongs to different user
+                  value:
+                    error: "Forbidden"
+                    detail: "You do not have access to this conversation"
+        '404':
+          description: Not found - conversation does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                conversationNotFound:
+                  summary: Invalid conversation_id
+                  value:
+                    error: "Not Found"
+                    detail: "Conversation not found"
+        '429':
+          description: Too many requests - rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rateLimitExceeded:
+                  summary: Rate limit exceeded
+                  value:
+                    error: "Too Many Requests"
+                    detail: "Rate limit exceeded. Please try again in 60 seconds."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                agentFailure:
+                  summary: Agent processing error
+                  value:
+                    error: "Internal Server Error"
+                    detail: "I'm having trouble processing your request right now. Please try again in a moment."
+                toolFailure:
+                  summary: Tool invocation error
+                  value:
+                    error: "Internal Server Error"
+                    detail: "I encountered an issue managing your tasks. Please try again."
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from authentication endpoints.
+
+        **Token Format**: `Authorization: Bearer <token>`
+
+        **Token Claims**:
+        - `user_id`: User identifier (UUID)
+        - `email`: User email address
+        - `exp`: Token expiration timestamp
+
+        **Security Requirements**:
+        - Token must be valid and not expired
+        - User ID extracted from token, never from client input
+        - All conversation queries filtered by authenticated user_id
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        conversation_id:
+          type: integer
+          nullable: true
+          description: |
+            Conversation identifier for continuing existing conversation.
+            - `null`: Start new conversation
+            - `<integer>`: Continue existing conversation
+            - Must belong to authenticated user (enforced server-side)
+          example: 42
+        message:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: |
+            User message in natural language.
+
+            **Examples**:
+            - "Add buy groceries to my list"
+            - "Show me my tasks"
+            - "Mark buy groceries as done"
+            - "Delete the first task"
+          example: "Add buy groceries to my list"
+
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - response
+        - tool_calls
+      properties:
+        conversation_id:
+          type: integer
+          description: |
+            Conversation identifier for this conversation.
+            - Use this value in subsequent requests to continue conversation
+            - Persists across server restarts (stateless architecture)
+          example: 42
+        response:
+          type: string
+          description: |
+            Natural language response from AI assistant.
+
+            **Response Types**:
+            - Confirmation: "I've added 'buy groceries' to your task list."
+            - Information: "You have 3 tasks: ..."
+            - Clarification: "What task would you like to add?"
+            - Error: "I couldn't find a task called 'xyz'."
+          example: "I've added 'buy groceries' to your task list."
+        tool_calls:
+          type: array
+          description: |
+            List of MCP tools invoked by the agent (for transparency).
+
+            **Purpose**: Provides visibility into agent actions
+            **Empty array**: No tools invoked (e.g., clarification questions)
+          items:
+            $ref: '#/components/schemas/ToolCall'
+          example:
+            - tool: "create_task"
+              arguments:
+                title: "buy groceries"
+                description: ""
+
+    ToolCall:
+      type: object
+      required:
+        - tool
+        - arguments
+      properties:
+        tool:
+          type: string
+          description: |
+            Name of the MCP tool invoked.
+
+            **Available Tools**:
+            - `create_task`: Create new task
+            - `list_tasks`: Get all user's tasks
+            - `update_task`: Update task details
+            - `delete_task`: Delete task
+            - `get_task`: Get task details
+          enum:
+            - create_task
+            - list_tasks
+            - update_task
+            - delete_task
+            - get_task
+          example: "create_task"
+        arguments:
+          type: object
+          description: |
+            Arguments passed to the tool.
+
+            **Schema**: Varies by tool (see MCP Tool Server spec)
+          additionalProperties: true
+          example:
+            title: "buy groceries"
+            description: ""
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - detail
+      properties:
+        error:
+          type: string
+          description: Error type (e.g., "Validation Error", "Unauthorized")
+          example: "Validation Error"
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Field 'message' is required"
