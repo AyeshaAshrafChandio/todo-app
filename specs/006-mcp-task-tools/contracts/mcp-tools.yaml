@@ -1,0 +1,510 @@
+openapi: 3.0.3
+info:
+  title: MCP Task Tools API
+  description: |
+    MCP tool contracts for AI agent interaction with task system.
+
+    This specification defines the input/output schemas for all 5 MCP tools that enable
+    the AI agent to perform CRUD operations on tasks through secure, stateless tool interfaces.
+
+    **Constitutional Alignment**:
+    - Principle VII (Agent Behavior Constraints): Agents decide, tools execute
+    - Principle VIII (MCP Tool Design): Tools validate authorization, are stateless, persist to database
+    - Principle VI (Stateless Architecture): No in-memory state between tool calls
+
+    **Security**: All tools receive user_id from authenticated chat layer (JWT token), never from agent reasoning.
+  version: 1.0.0
+  contact:
+    name: Todo App Team
+    email: support@todoapp.example.com
+
+tags:
+  - name: Task Tools
+    description: MCP tools for task CRUD operations
+
+components:
+  schemas:
+    # Common schemas
+    TaskItem:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - completed
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Task ID
+          example: 1
+        title:
+          type: string
+          description: Task title
+          example: "Buy groceries"
+        description:
+          type: string
+          description: Task description
+          example: "Milk, eggs, bread"
+        completed:
+          type: boolean
+          description: Task completion status
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Task creation timestamp
+          example: "2026-02-06T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Task last update timestamp
+          example: "2026-02-06T10:00:00Z"
+
+    ToolError:
+      type: object
+      required:
+        - error
+        - detail
+      properties:
+        error:
+          type: string
+          enum:
+            - ValidationError
+            - AuthorizationError
+            - NotFoundError
+            - ServerError
+          description: Error type
+          example: "ValidationError"
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Title must be between 1 and 200 characters"
+
+    # Tool: add_task
+    AddTaskInput:
+      type: object
+      required:
+        - user_id
+        - title
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: User UUID from JWT token
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title
+          example: "Buy groceries"
+        description:
+          type: string
+          maxLength: 1000
+          description: Task description (optional)
+          example: "Milk, eggs, bread"
+          default: ""
+
+    AddTaskOutput:
+      type: object
+      required:
+        - task_id
+        - status
+        - title
+      properties:
+        task_id:
+          type: integer
+          description: Created task ID
+          example: 1
+        status:
+          type: string
+          description: Creation status
+          example: "created"
+        title:
+          type: string
+          description: Task title
+          example: "Buy groceries"
+
+    # Tool: list_tasks
+    ListTasksInput:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: User UUID from JWT token
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        status:
+          type: string
+          enum:
+            - all
+            - pending
+            - completed
+          description: Filter by task status
+          example: "all"
+          default: "all"
+
+    ListTasksOutput:
+      type: object
+      required:
+        - tasks
+        - count
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskItem'
+          description: List of tasks
+        count:
+          type: integer
+          description: Total number of tasks returned
+          example: 1
+
+    # Tool: update_task
+    TaskUpdates:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: New task title
+          example: "Buy milk"
+        description:
+          type: string
+          maxLength: 1000
+          description: New task description
+          example: "2% milk"
+        completed:
+          type: boolean
+          description: New completion status
+          example: true
+
+    UpdateTaskInput:
+      type: object
+      required:
+        - user_id
+        - task_id
+        - updates
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: User UUID from JWT token
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task_id:
+          type: integer
+          minimum: 1
+          description: Task ID to update
+          example: 1
+        updates:
+          $ref: '#/components/schemas/TaskUpdates'
+
+    UpdateTaskOutput:
+      type: object
+      required:
+        - task_id
+        - status
+        - task
+      properties:
+        task_id:
+          type: integer
+          description: Updated task ID
+          example: 1
+        status:
+          type: string
+          description: Update status
+          example: "updated"
+        task:
+          $ref: '#/components/schemas/TaskItem'
+
+    # Tool: delete_task
+    DeleteTaskInput:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: User UUID from JWT token
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task_id:
+          type: integer
+          minimum: 1
+          description: Task ID to delete
+          example: 1
+
+    DeleteTaskOutput:
+      type: object
+      required:
+        - task_id
+        - status
+      properties:
+        task_id:
+          type: integer
+          description: Deleted task ID
+          example: 1
+        status:
+          type: string
+          description: Deletion status
+          example: "deleted"
+
+    # Tool: get_task
+    GetTaskInput:
+      type: object
+      required:
+        - user_id
+        - task_id
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          description: User UUID from JWT token
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        task_id:
+          type: integer
+          minimum: 1
+          description: Task ID to retrieve
+          example: 1
+
+    GetTaskOutput:
+      type: object
+      required:
+        - task
+      properties:
+        task:
+          $ref: '#/components/schemas/TaskItem'
+
+# Tool definitions (for documentation purposes)
+paths:
+  /tools/add_task:
+    post:
+      tags:
+        - Task Tools
+      summary: Create a new task
+      description: |
+        MCP tool to create a new task for the authenticated user.
+
+        **Authorization**: user_id must be from authenticated JWT token
+        **Delegation**: Delegates to existing task service layer
+        **Idempotency**: Not idempotent (creates new task each time)
+      operationId: add_task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTaskInput'
+      responses:
+        '200':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddTaskOutput'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+
+  /tools/list_tasks:
+    post:
+      tags:
+        - Task Tools
+      summary: List user's tasks
+      description: |
+        MCP tool to retrieve all tasks for the authenticated user with optional status filtering.
+
+        **Authorization**: user_id must be from authenticated JWT token
+        **Delegation**: Delegates to existing task service layer
+        **Idempotency**: Idempotent (same input → same output)
+      operationId: list_tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListTasksInput'
+      responses:
+        '200':
+          description: Tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListTasksOutput'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+
+  /tools/update_task:
+    post:
+      tags:
+        - Task Tools
+      summary: Update task details
+      description: |
+        MCP tool to update task details (title, description, completion status).
+
+        **Authorization**: user_id must be from authenticated JWT token, user must own task
+        **Delegation**: Delegates to existing task service layer
+        **Idempotency**: Idempotent (same input → same output)
+      operationId: update_task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskInput'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateTaskOutput'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '403':
+          description: Authorization error (user doesn't own task)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+
+  /tools/delete_task:
+    post:
+      tags:
+        - Task Tools
+      summary: Delete a task
+      description: |
+        MCP tool to delete a task owned by the authenticated user.
+
+        **Authorization**: user_id must be from authenticated JWT token, user must own task
+        **Delegation**: Delegates to existing task service layer
+        **Idempotency**: Idempotent (deleting already-deleted task returns not found)
+      operationId: delete_task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteTaskInput'
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteTaskOutput'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '403':
+          description: Authorization error (user doesn't own task)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+
+  /tools/get_task:
+    post:
+      tags:
+        - Task Tools
+      summary: Get task details
+      description: |
+        MCP tool to retrieve details of a single task owned by the authenticated user.
+
+        **Authorization**: user_id must be from authenticated JWT token, user must own task
+        **Delegation**: Delegates to existing task service layer
+        **Idempotency**: Idempotent (same input → same output)
+      operationId: get_task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetTaskInput'
+      responses:
+        '200':
+          description: Task retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTaskOutput'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '403':
+          description: Authorization error (user doesn't own task)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolError'
