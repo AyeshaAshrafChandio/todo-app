@@ -135,15 +135,15 @@
 
 ### Implementation for User Story 5
 
-- [ ] T044 [P] [US5] Install WebSocket dependencies (websockets, socket.io) in backend/requirements.txt
-- [ ] T045 [US5] Create WebSocket manager in backend/app/services/websocket_manager.py
-- [ ] T046 [US5] Implement WebSocket endpoint in backend/app/routes/websocket.py
-- [ ] T047 [US5] Add WebSocket event emitters to task operations in backend/app/services/task_service.py
-- [ ] T048 [US5] Create WebSocket client in frontend/src/lib/websocket/client.ts
-- [ ] T049 [US5] Update useDashboard hook to use WebSocket instead of polling in frontend/src/hooks/useDashboard.ts
-- [ ] T050 [US5] Implement WebSocket reconnection logic in frontend/src/lib/websocket/client.ts
-- [ ] T051 [US5] Add WebSocket connection status indicator in frontend/src/components/dashboard/ConnectionStatus.tsx
-- [ ] T052 [US5] Test WebSocket real-time updates in frontend/tests/websocket.spec.ts
+- [X] T044 [P] [US5] Install WebSocket dependencies (websockets, socket.io) in backend/requirements.txt
+- [X] T045 [US5] Create WebSocket manager in backend/app/services/websocket_manager.py
+- [X] T046 [US5] Implement WebSocket endpoint in backend/app/routes/websocket.py
+- [X] T047 [US5] Add WebSocket event emitters to task operations in backend/app/services/task_service.py
+- [X] T048 [US5] Create WebSocket client in frontend/src/lib/websocket/client.ts
+- [X] T049 [US5] Update useDashboard hook to use WebSocket instead of polling in frontend/src/hooks/useDashboard.ts
+- [X] T050 [US5] Implement WebSocket reconnection logic in frontend/src/lib/websocket/client.ts
+- [X] T051 [US5] Add WebSocket connection status indicator in frontend/src/components/dashboard/ConnectionStatus.tsx
+- [X] T052 [US5] Test WebSocket real-time updates in frontend/tests/websocket.spec.ts
 
 **Checkpoint**: At this point, dashboard updates instantly via WebSockets. Polling is replaced with push-based updates.
 

@@ -21,8 +21,16 @@ export interface ChatState {
 
 export interface ChatRequest {
   message: string;
+  conversation_id: number | null;
+}
+
+export interface ToolCall {
+  tool: string;
+  arguments: Record<string, any>;
 }
 
 export interface ChatResponse {
-  reply: string;
+  conversation_id: number;
+  response: string;
+  tool_calls: ToolCall[];
 }

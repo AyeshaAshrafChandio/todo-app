@@ -22,6 +22,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
+  const [conversationId, setConversationId] = useState<number | null>(null);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim()) return;
@@ -42,14 +43,19 @@ export function ChatProvider({ children }: ChatProviderProps) {
     setInputValue('');
 
     try {
-      // Send message to API
-      const response = await sendMessageApi(content.trim());
+      // Send message to API with conversation ID
+      const response = await sendMessageApi(content.trim(), conversationId);
+
+      // Update conversation ID if this is a new conversation
+      if (!conversationId && response.conversation_id) {
+        setConversationId(response.conversation_id);
+      }
 
       // Create AI message
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         role: 'assistant',
-        content: response.reply,
+        content: response.response, // Use 'response' field from backend
         timestamp: new Date(),
         status: 'sent',
       };
@@ -70,7 +76,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [conversationId]);
 
   const retryMessage = useCallback(async (messageId: string) => {
     const message = messages.find(msg => msg.id === messageId);

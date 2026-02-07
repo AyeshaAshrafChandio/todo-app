@@ -54,13 +54,23 @@ def client_fixture(session: Session):
     Create FastAPI test client with overridden database dependency.
 
     This ensures tests use the in-memory test database instead of
-    the production database.
+    the production database, and bypasses authentication for testing.
     """
+    from app.middleware.auth import get_current_user
+
     def get_session_override():
         return session
 
-    # Override the get_db dependency
+    def get_current_user_override():
+        """Mock authentication - returns a test user matching test data."""
+        return {
+            "user_id": "user123",
+            "email": "test@example.com"
+        }
+
+    # Override dependencies
     app.dependency_overrides[get_db] = get_session_override
+    app.dependency_overrides[get_current_user] = get_current_user_override
 
     # Create test client
     client = TestClient(app)

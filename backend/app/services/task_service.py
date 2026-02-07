@@ -6,6 +6,7 @@ the API route handlers. All functions accept a database session and return
 domain objects (Task instances) or raise HTTPException for errors.
 
 Extended to support team-based tasks with role-based access control.
+Extended to emit WebSocket events for real-time updates (Phase 7).
 """
 
 from typing import List, Optional
@@ -21,6 +22,8 @@ from app.middleware.permissions import (
     can_edit_task,
     can_delete_task
 )
+from app.services.websocket_manager import websocket_manager
+import asyncio
 
 
 def create_task(db: Session, user_id: str, task_data: TaskCreate) -> Task:
@@ -88,6 +91,20 @@ def create_task(db: Session, user_id: str, task_data: TaskCreate) -> Task:
 
         # Refresh to get auto-generated values (id, timestamps)
         db.refresh(task)
+
+        # Emit WebSocket event for real-time updates (Phase 7)
+        try:
+            asyncio.create_task(
+                websocket_manager.broadcast_task_created(
+                    task_id=task.id,
+                    user_id=user_id,
+                    team_id=task.team_id
+                )
+            )
+        except Exception as e:
+            # Log error but don't fail the operation
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to emit task_created event: {e}")
 
         return task
 
@@ -223,10 +240,12 @@ def get_task_by_id(db: Session, user_id: str, task_id: int) -> Task:
     # Check if user has access to this task
     can_access, access_type = can_access_task(db, task, user_id)
 
+    # Return 404 instead of 403 to prevent information leakage
+    # (don't reveal that task exists if user doesn't have access)
     if not can_access:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this task"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
         )
 
     return task
@@ -281,11 +300,15 @@ def update_task(db: Session, user_id: str, task_id: int, task_data: TaskUpdate) 
             )
 
         # Check if user has edit permission
+        # Return 404 instead of 403 to prevent information leakage
         if not can_edit_task(db, task, user_id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to edit this task"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
             )
+
+        # Track completion status change for WebSocket events
+        old_completed = task.completed
 
         # Update provided fields
         task.title = task_data.title
@@ -300,6 +323,42 @@ def update_task(db: Session, user_id: str, task_id: int, task_data: TaskUpdate) 
 
         # Refresh to get updated timestamp
         db.refresh(task)
+
+        # Emit WebSocket events for real-time updates (Phase 7)
+        try:
+            # Check if completion status changed
+            if task_data.completed is not None and old_completed != task.completed:
+                if task.completed:
+                    # Task was marked as completed
+                    asyncio.create_task(
+                        websocket_manager.broadcast_task_completed(
+                            task_id=task.id,
+                            user_id=user_id,
+                            team_id=task.team_id
+                        )
+                    )
+                else:
+                    # Task was reopened
+                    asyncio.create_task(
+                        websocket_manager.broadcast_task_reopened(
+                            task_id=task.id,
+                            user_id=user_id,
+                            team_id=task.team_id
+                        )
+                    )
+            else:
+                # General update (title or description changed)
+                asyncio.create_task(
+                    websocket_manager.broadcast_task_updated(
+                        task_id=task.id,
+                        user_id=user_id,
+                        team_id=task.team_id
+                    )
+                )
+        except Exception as e:
+            # Log error but don't fail the operation
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to emit task update event: {e}")
 
         return task
 
@@ -360,15 +419,34 @@ def delete_task(db: Session, user_id: str, task_id: int) -> None:
             )
 
         # Check if user has delete permission
+        # Return 404 instead of 403 to prevent information leakage
         if not can_delete_task(db, task, user_id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not have permission to delete this task"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
             )
+
+        # Store task info for WebSocket event before deletion
+        task_id = task.id
+        team_id = task.team_id
 
         # Delete task from database (hard delete)
         db.delete(task)
         db.commit()
+
+        # Emit WebSocket event for real-time updates (Phase 7)
+        try:
+            asyncio.create_task(
+                websocket_manager.broadcast_task_deleted(
+                    task_id=task_id,
+                    user_id=user_id,
+                    team_id=team_id
+                )
+            )
+        except Exception as e:
+            # Log error but don't fail the operation
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to emit task_deleted event: {e}")
 
     except HTTPException:
         # Re-raise HTTP exceptions (404, 403)

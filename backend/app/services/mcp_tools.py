@@ -8,7 +8,6 @@ enforce authorization, and provide deterministic responses.
 Feature: 006-mcp-task-tools
 """
 
-from mcp import Tool
 from typing import Dict, Any
 import logging
 import json
@@ -37,15 +36,6 @@ from pydantic import ValidationError
 logger = logging.getLogger(__name__)
 
 
-@Tool(
-    name="add_task",
-    description="Create a new task for the authenticated user",
-    parameters={
-        "user_id": {"type": "string", "description": "User UUID from JWT token"},
-        "title": {"type": "string", "description": "Task title"},
-        "description": {"type": "string", "description": "Task description", "optional": True}
-    }
-)
 async def add_task(user_id: str, title: str, description: str = "") -> Dict[str, Any]:
     """
     Create a new task for the authenticated user.
@@ -160,14 +150,6 @@ async def add_task(user_id: str, title: str, description: str = "") -> Dict[str,
         ).dict()
 
 
-@Tool(
-    name="list_tasks",
-    description="Retrieve all tasks for the authenticated user with optional status filtering",
-    parameters={
-        "user_id": {"type": "string", "description": "User UUID from JWT token"},
-        "status": {"type": "string", "description": "Filter by task status: all, pending, completed", "optional": True}
-    }
-)
 async def list_tasks(user_id: str, status: str = "all") -> Dict[str, Any]:
     """
     Retrieve all tasks for the authenticated user.
@@ -276,14 +258,6 @@ async def list_tasks(user_id: str, status: str = "all") -> Dict[str, Any]:
         ).dict()
 
 
-@Tool(
-    name="get_task",
-    description="Retrieve details of a single task owned by the authenticated user",
-    parameters={
-        "user_id": {"type": "string", "description": "User UUID from JWT token"},
-        "task_id": {"type": "integer", "description": "Task ID to retrieve"}
-    }
-)
 async def get_task(user_id: str, task_id: int) -> Dict[str, Any]:
     """
     Retrieve details of a single task.
@@ -402,15 +376,6 @@ async def get_task(user_id: str, task_id: int) -> Dict[str, Any]:
         ).dict()
 
 
-@Tool(
-    name="update_task",
-    description="Update task details (title, description, completion status)",
-    parameters={
-        "user_id": {"type": "string", "description": "User UUID from JWT token"},
-        "task_id": {"type": "integer", "description": "Task ID to update"},
-        "updates": {"type": "object", "description": "Fields to update (title, description, completed)"}
-    }
-)
 async def update_task_tool(user_id: str, task_id: int, updates: Dict[str, Any]) -> Dict[str, Any]:
     """
     Update task details.
@@ -546,14 +511,6 @@ async def update_task_tool(user_id: str, task_id: int, updates: Dict[str, Any]) 
         ).dict()
 
 
-@Tool(
-    name="delete_task",
-    description="Delete a task owned by the authenticated user",
-    parameters={
-        "user_id": {"type": "string", "description": "User UUID from JWT token"},
-        "task_id": {"type": "integer", "description": "Task ID to delete"}
-    }
-)
 async def delete_task_tool(user_id: str, task_id: int) -> Dict[str, Any]:
     """
     Delete a task.

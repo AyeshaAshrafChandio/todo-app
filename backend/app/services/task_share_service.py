@@ -4,16 +4,20 @@ Task Share service for database operations on TaskShare model.
 This module provides service functions for sharing tasks with other users,
 revoking shares, and retrieving shared task information. It handles task
 sharing business logic and database interactions.
+
+Extended to emit WebSocket events for real-time updates (Phase 7).
 """
 
 from typing import List, Dict
 from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
+import asyncio
 
 from app.models.task_share import TaskShare, SharePermission
 from app.models.task import Task
 from app.models.user import User
+from app.services.websocket_manager import websocket_manager
 
 
 def share_task(
@@ -106,6 +110,20 @@ def share_task(
         db.add(share)
         db.commit()
         db.refresh(share)
+
+        # Emit WebSocket event for real-time updates (Phase 7)
+        try:
+            asyncio.create_task(
+                websocket_manager.broadcast_task_shared(
+                    task_id=task_id,
+                    shared_with_user_id=shared_with_user_id,
+                    shared_by_user_id=owner_id
+                )
+            )
+        except Exception as e:
+            # Log error but don't fail the operation
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to emit task_shared event: {e}")
 
         return share
 

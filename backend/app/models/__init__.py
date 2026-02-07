@@ -7,6 +7,8 @@ from .user import User
 from .team import Team
 from .team_member import TeamMember, TeamRole
 from .task_share import TaskShare, SharePermission
+from .conversation import Conversation
+from .message import Message
 
 __all__ = [
     "Task",
@@ -15,5 +17,7 @@ __all__ = [
     "TeamMember",
     "TeamRole",
     "TaskShare",
-    "SharePermission"
+    "SharePermission",
+    "Conversation",
+    "Message"
 ]

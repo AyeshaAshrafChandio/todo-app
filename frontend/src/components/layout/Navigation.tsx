@@ -17,6 +17,7 @@ export function Navigation() {
     { href: '/tasks', label: 'Tasks' },
     { href: '/teams', label: 'Teams' },
     { href: '/shared', label: 'Shared' },
+    { href: '/chat', label: '💬 AI Chat' },
   ];
 
   const isActive = (href: string) => {

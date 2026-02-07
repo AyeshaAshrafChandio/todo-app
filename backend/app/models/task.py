@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Optional
 from sqlmodel import Field, SQLModel, Column
 from sqlalchemy import ForeignKey
+from pydantic import field_validator, model_validator, ConfigDict
 
 
 class Task(SQLModel, table=True):
@@ -113,9 +114,39 @@ class Task(SQLModel, table=True):
         description="Timestamp when task was last updated (UTC)"
     )
 
-    class Config:
-        """Pydantic configuration for the Task model."""
-        json_schema_extra = {
+    @field_validator('title', mode='before')
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        """Validate that title is not empty and within length limits."""
+        if v is None:
+            raise ValueError('Title is required')
+        if not isinstance(v, str):
+            raise ValueError('Title must be a string')
+        if len(v) == 0 or len(v.strip()) == 0:
+            raise ValueError('Title cannot be empty')
+        if len(v) > 200:
+            raise ValueError('Title cannot exceed 200 characters')
+        return v
+
+    @field_validator('description', mode='before')
+    @classmethod
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that description is within length limits."""
+        if v is not None and len(v) > 1000:
+            raise ValueError('Description cannot exceed 1000 characters')
+        return v
+
+    @field_validator('user_id', mode='before')
+    @classmethod
+    def validate_user_id(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that user_id is within length limits."""
+        if v is not None and len(v) > 36:
+            raise ValueError('User ID cannot exceed 36 characters')
+        return v
+
+    model_config = ConfigDict(
+        validate_assignment=True,
+        json_schema_extra={
             "example": {
                 "id": 1,
                 "title": "Buy groceries",
@@ -126,6 +157,7 @@ class Task(SQLModel, table=True):
                 "updated_at": "2026-01-20T10:30:00Z"
             }
         }
+    )
 
     def __repr__(self) -> str:
         """String representation of the Task."""

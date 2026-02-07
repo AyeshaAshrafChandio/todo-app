@@ -3,6 +3,7 @@
 import { useDashboard } from '@/hooks/useDashboard';
 import { StatisticsCard } from './StatisticsCard';
 import { Button } from '@/components/ui/Button';
+import { ConnectionStatusIndicator } from './ConnectionStatus';
 import type { StatisticCardData } from '@/lib/types/dashboard';
 
 /**
@@ -10,7 +11,9 @@ import type { StatisticCardData } from '@/lib/types/dashboard';
  *
  * Main dashboard layout with statistics cards
  * Features:
- * - Real-time statistics with 5-second polling
+ * - Real-time statistics with WebSocket updates (< 1 second latency)
+ * - Automatic reconnection with exponential backoff
+ * - Connection status indicator
  * - Loading states with skeleton UI
  * - Error handling with retry functionality
  * - Responsive grid layout (1 col mobile, 2 cols tablet, 4 cols desktop)
@@ -18,7 +21,7 @@ import type { StatisticCardData } from '@/lib/types/dashboard';
  * @returns Dashboard layout with statistics
  */
 export function DashboardLayout() {
-  const { statistics, loading, error, retry } = useDashboard();
+  const { statistics, loading, error, retry, connectionStatus, isWebSocketConnected } = useDashboard();
 
   // Transform backend data to card data format
   const getCardData = (): StatisticCardData[] => {
@@ -118,12 +121,16 @@ export function DashboardLayout() {
   // Success state (with or without loading)
   return (
     <div className="space-y-6">
-      {/* Auto-update indicator */}
+      {/* Connection Status and Auto-update indicator */}
       {!loading && statistics && (
         <div className="flex items-center justify-between text-sm text-gray-500">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            <span>Live updates every 5 seconds</span>
+          <div className="flex items-center gap-3">
+            <ConnectionStatusIndicator status={connectionStatus} />
+            {isWebSocketConnected ? (
+              <span className="text-green-600 font-medium">Real-time updates active</span>
+            ) : (
+              <span className="text-yellow-600 font-medium">Using polling fallback</span>
+            )}
           </div>
           <button
             onClick={retry}

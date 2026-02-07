@@ -40,6 +40,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           aria-describedby={
             error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined
           }
+          suppressHydrationWarning
           {...props}
         />
         {error && (
