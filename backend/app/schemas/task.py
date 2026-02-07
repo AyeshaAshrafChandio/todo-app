@@ -59,6 +59,7 @@ class TaskUpdate(BaseModel):
     Schema for updating an existing task.
 
     Used by PUT /api/{user_id}/tasks/{id} endpoint.
+    All fields are optional to support partial updates.
     """
     model_config = ConfigDict(
         json_schema_extra={
@@ -70,10 +71,11 @@ class TaskUpdate(BaseModel):
         }
     )
 
-    title: str = Field(
+    title: Optional[str] = Field(
+        default=None,
         min_length=1,
         max_length=200,
-        description="Task title (required, non-empty)"
+        description="Task title (optional for partial updates)"
     )
     description: Optional[str] = Field(
         default=None,
@@ -87,9 +89,9 @@ class TaskUpdate(BaseModel):
 
     @field_validator('title')
     @classmethod
-    def validate_title(cls, v: str) -> str:
-        """Validate that title is not empty."""
-        if not v or len(v.strip()) == 0:
+    def validate_title(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that title is not empty if provided."""
+        if v is not None and (not v or len(v.strip()) == 0):
             raise ValueError('Title cannot be empty')
         return v
 

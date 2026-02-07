@@ -14,6 +14,7 @@ import time
 import logging
 from typing import Generator, Optional
 from sqlmodel import Session, create_engine
+from sqlalchemy import text
 from sqlalchemy.pool import NullPool, StaticPool
 from sqlalchemy.exc import OperationalError, DatabaseError, DisconnectionError
 from app.config import settings
@@ -121,8 +122,8 @@ def get_db() -> Generator[Session, None, None]:
             # Create a new session for this request
             session = Session(engine)
 
-            # Test the connection
-            session.execute("SELECT 1")
+            # Test the connection (SQLAlchemy 2.0 requires text() wrapper)
+            session.execute(text("SELECT 1"))
 
             # Yield the session to the route handler
             yield session
@@ -269,7 +270,7 @@ def test_connection() -> bool:
     """
     try:
         with Session(engine) as session:
-            session.execute("SELECT 1")
+            session.execute(text("SELECT 1"))
         logger.info("Database connection test successful")
         return True
     except Exception as e:
