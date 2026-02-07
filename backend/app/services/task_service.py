@@ -310,9 +310,12 @@ def update_task(db: Session, user_id: str, task_id: int, task_data: TaskUpdate) 
         # Track completion status change for WebSocket events
         old_completed = task.completed
 
-        # Update provided fields
-        task.title = task_data.title
-        task.description = task_data.description
+        # Update provided fields (only update fields that are not None)
+        # This enables partial updates where only some fields are provided
+        if task_data.title is not None:
+            task.title = task_data.title
+        if task_data.description is not None:
+            task.description = task_data.description
         if task_data.completed is not None:
             task.completed = task_data.completed
 

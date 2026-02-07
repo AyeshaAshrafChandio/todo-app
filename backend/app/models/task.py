@@ -116,10 +116,16 @@ class Task(SQLModel, table=True):
 
     @field_validator('title', mode='before')
     @classmethod
-    def validate_title(cls, v: str) -> str:
-        """Validate that title is not empty and within length limits."""
+    def validate_title(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that title is not empty and within length limits.
+
+        Note: Allows None for partial updates (validate_assignment=True).
+        The title field itself is required (not Optional), so None will only
+        occur during partial updates where title is not being changed.
+        """
         if v is None:
-            raise ValueError('Title is required')
+            # Allow None during partial updates - the existing value will be preserved
+            return v
         if not isinstance(v, str):
             raise ValueError('Title must be a string')
         if len(v) == 0 or len(v.strip()) == 0:
