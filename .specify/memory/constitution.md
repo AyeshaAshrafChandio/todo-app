@@ -1,35 +1,43 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version Change: NEW → 1.0.0
-Rationale: Initial constitution for Todo Full-Stack Web Application (Phase-2 Hackathon)
+Version Change: 1.0.0 → 1.1.0
+Rationale: Phase III expansion - Adding AI-Powered Todo Chatbot with MCP tools and agent-based reasoning while maintaining full backward compatibility with Phase I & II
 
-Modified Principles: N/A (new constitution)
+Modified Principles:
+  - Principle V (Separation of Concerns) - Expanded to include AI agent and MCP tool boundaries
+
 Added Sections:
-  - Core Principles (5 principles)
-  - Key Standards (API, Authentication, Data, Frontend, Spec Quality)
-  - Technology Stack & Constraints
-  - Functional Scope
-  - Success Criteria
-  - Governance
+  - Phase III: AI-Powered Chatbot Principles (6 new principles)
+  - AI/Agent Standards (Agent Behavior, MCP Tool Design, Conversation Management)
+  - Phase III Technology Stack (OpenAI Agents SDK, MCP SDK, ChatKit)
+  - Phase III Functional Scope (Natural language task management, conversation persistence)
+  - Spec Boundaries section (multi-spec architecture requirements)
 
-Removed Sections: N/A
+Removed Sections: None (full backward compatibility maintained)
 
 Templates Requiring Updates:
-  ✅ .specify/templates/spec-template.md - Reviewed, aligns with spec quality standards
+  ✅ .specify/templates/spec-template.md - Reviewed, compatible with multi-spec architecture
   ✅ .specify/templates/plan-template.md - Reviewed, constitution check section compatible
   ✅ .specify/templates/tasks-template.md - Reviewed, aligns with agentic workflow
+  ⚠ .specify/templates/commands/*.md - May need review for Phase III agent references
 
-Follow-up TODOs: None
+Follow-up TODOs:
+  - Review command templates for Phase III-specific agent guidance
+  - Consider creating Phase III-specific checklist template for AI/MCP validation
 -->
 
 # Todo Full-Stack Web Application Constitution
 
-**Project**: Todo Full-Stack Web Application (Phase-2 Hackathon)
+**Project**: Todo Full-Stack Web Application with AI-Powered Chatbot (Phase I, II & III)
 
-**Objective**: Transform an in-memory console Todo app into a production-grade, multi-user full-stack web application using a strictly spec-driven, agentic development workflow with no manual coding.
+**Objective**: Transform an in-memory console Todo app into a production-grade, multi-user full-stack web application with AI-powered natural language task management, using a strictly spec-driven, agentic development workflow with no manual coding.
 
-## Core Principles
+**Phase I**: Backend Core & Data Layer (PostgreSQL, FastAPI, SQLModel)
+**Phase II**: Frontend Full-Stack UI (Next.js, Authentication, Responsive Design)
+**Phase III**: AI-Powered Chatbot (OpenAI Agents SDK, MCP Tools, Natural Language Interface)
+
+## Core Principles (Phase I & II)
 
 ### I. Spec-Driven Development
 
@@ -86,10 +94,11 @@ Authentication and authorization MUST be enforced at every layer. No data leakag
 - Cross-user data access MUST be prevented at the database query level
 - Secrets MUST be stored in `.env` files (never hardcoded)
 - Token expiration and refresh MUST be handled properly
+- User identity MUST be derived ONLY from verified JWT (never from client-supplied user_id)
 
 ### V. Separation of Concerns
 
-Clear boundaries MUST exist between frontend, backend, database, and authentication layers. Backend architecture MUST be stateless.
+Clear boundaries MUST exist between frontend, backend, database, authentication, AI agents, and MCP tools. Backend architecture MUST be stateless.
 
 **Rationale**: Enables independent development, testing, and scaling of each layer. Reduces coupling and improves maintainability.
 
@@ -100,6 +109,98 @@ Clear boundaries MUST exist between frontend, backend, database, and authenticat
 - Authentication logic MUST be centralized and reusable
 - Business logic MUST reside in backend services, not in API routes
 - Backend MUST NOT maintain session state (stateless JWT-based auth)
+- **Phase III**: Frontend MUST NOT call MCP tools directly
+- **Phase III**: AI agents MUST NOT contain business logic
+- **Phase III**: MCP tools MUST NOT contain conversational logic
+
+## Phase III: AI-Powered Chatbot Principles
+
+### VI. Stateless Architecture
+
+Backend MUST hold NO in-memory session state. Conversation context MUST be reconstructed from database per request. MCP tools MUST be stateless and idempotent.
+
+**Rationale**: Ensures scalability, reliability, and ability to resume conversations after server restarts. Prevents memory leaks and state corruption.
+
+**Rules**:
+- Backend MUST NOT store conversation state in memory
+- All conversation history MUST be persisted to database
+- Each request MUST reconstruct context from database
+- MCP tools MUST be stateless (no instance variables for state)
+- MCP tools MUST be idempotent (same input → same output)
+- Conversation resume MUST work after server restart
+
+### VII. Agent Behavior Constraints
+
+Agents may only decide *what* to do. Agents may never directly mutate the database. All state changes MUST happen via MCP tools.
+
+**Rationale**: Maintains clear separation between decision-making (agent) and execution (tools). Ensures auditability and testability of all actions.
+
+**Rules**:
+- Agents MUST decide actions but NOT execute them directly
+- Agents MUST use MCP tools for all database mutations
+- Agents MUST confirm actions in natural language to users
+- Agents MUST handle errors gracefully with user-friendly responses
+- Agents MUST NOT bypass MCP tools to access database directly
+
+### VIII. MCP Tool Design
+
+Tools MUST map 1:1 to domain actions. Tools MUST validate authorization server-side. Tools MUST be stateless and persist all changes to database.
+
+**Rationale**: Ensures tools are reusable, testable, and secure. Prevents unauthorized actions and maintains data integrity.
+
+**Rules**:
+- Each MCP tool MUST correspond to exactly one domain action
+- Tools MUST validate JWT authorization on every invocation
+- Tools MUST be stateless (no instance state)
+- Tools MUST persist all changes to database immediately
+- Tools MUST return structured, predictable outputs
+- Tools MUST validate input parameters thoroughly
+- Tools MUST handle errors and return clear error messages
+
+### IX. Frontend-Backend Integration
+
+Frontend MUST communicate ONLY with FastAPI backend. JWT MUST be attached to every request. Frontend MUST NOT infer permissions or call MCP directly.
+
+**Rationale**: Maintains security boundaries and ensures all authorization happens server-side. Prevents client-side permission bypasses.
+
+**Rules**:
+- Frontend MUST send all requests to FastAPI endpoints only
+- Frontend MUST include JWT token in Authorization header
+- Frontend MUST NOT call MCP tools directly
+- Frontend MUST NOT make authorization decisions
+- Frontend MUST support conversation resume via conversation_id
+- Chat UI MUST be functional (not design-focused)
+
+### X. Backward Compatibility
+
+Phase I & II APIs MUST remain unchanged. Existing REST endpoints MUST continue to work. No breaking schema changes are allowed.
+
+**Rationale**: Ensures existing functionality remains stable while adding new features. Prevents regression and maintains user trust.
+
+**Rules**:
+- All Phase I & II API endpoints MUST remain functional
+- Database schema changes MUST be additive only (no breaking changes)
+- Existing authentication flow MUST continue to work
+- Phase III features MUST be implemented as new endpoints/tables
+- No modifications to existing API contracts
+- Existing frontend components MUST continue to function
+
+### XI. Multi-Spec Architecture
+
+Phase III MUST be implemented as MULTIPLE independent specs, each with single responsibility and clear boundaries.
+
+**Rationale**: Enables parallel development, independent testing, and clear ownership of components. Reduces complexity and improves maintainability.
+
+**Rules**:
+- Phase III MUST be split into at least 3 specs:
+  - AI Chat Backend (agent orchestration + chat endpoint)
+  - MCP Tool Server (task actions as tools)
+  - Chat Frontend (ChatKit UI integration)
+- Each spec MUST be independently understandable
+- Each spec MUST be independently testable
+- Each spec MUST have clear inputs and outputs
+- Each spec MUST declare dependencies explicitly
+- Specs MUST NOT overlap in responsibility
 
 ## Key Standards
 
@@ -183,6 +284,31 @@ Clear boundaries MUST exist between frontend, backend, database, and authenticat
 - Authentication state MUST be managed consistently
 - Token refresh MUST happen transparently to the user
 
+### AI/Agent Standards (Phase III)
+
+**Agent Behavior**:
+- Agents MUST use natural language to communicate with users
+- Agents MUST confirm destructive actions before execution
+- Agents MUST provide clear feedback on action results
+- Agents MUST handle ambiguous requests by asking clarifying questions
+- Agents MUST gracefully handle errors with user-friendly messages
+- Agents MUST NOT make assumptions about user intent
+
+**MCP Tool Design**:
+- Each tool MUST have a clear, single purpose
+- Tool names MUST be descriptive and action-oriented (e.g., `create_task`, `list_tasks`)
+- Tool parameters MUST be strongly typed and validated
+- Tool responses MUST include success/failure status and relevant data
+- Tools MUST log all actions for auditability
+- Tools MUST handle concurrent requests safely
+
+**Conversation Management**:
+- Each conversation MUST have a unique conversation_id
+- Conversation history MUST be stored in database
+- Conversations MUST be resumable after server restart
+- Conversation context MUST include: user_id, messages, tool calls, timestamps
+- Old conversations SHOULD be archived but remain accessible
+
 ### Spec Quality Standards
 
 All specifications MUST be:
@@ -209,7 +335,7 @@ All specifications MUST be:
 
 ## Technology Stack & Constraints
 
-### Fixed Technology Stack
+### Phase I & II Technology Stack
 
 | Layer | Technology | Version | Rationale |
 |-------|-----------|---------|-----------|
@@ -220,7 +346,22 @@ All specifications MUST be:
 | Authentication | Better Auth | Latest | Modern auth library with JWT support |
 | Spec-Driven | Claude Code + Spec-Kit Plus | Latest | Agentic development workflow tools |
 
+### Phase III Technology Stack
+
+| Layer | Technology | Version | Rationale |
+|-------|-----------|---------|-----------|
+| AI Framework | OpenAI Agents SDK | Latest stable | Official SDK for agent orchestration |
+| MCP | Official MCP SDK | Latest stable | Model Context Protocol for tool integration |
+| Chat UI | OpenAI ChatKit | Latest stable | Pre-built chat interface components |
+| Agent Runtime | FastAPI (same backend) | Latest stable | Unified backend for REST + AI endpoints |
+
 **NON-NEGOTIABLE**: This stack MUST NOT be changed without constitutional amendment.
+
+**Phase III Constraints**:
+- No vendor-specific hacks or workarounds
+- No server-side memory storage for conversation state
+- No hardcoded secrets or API keys
+- No UI-driven authorization decisions
 
 ### Process Constraints
 
@@ -253,6 +394,12 @@ All specifications MUST be:
 - Database queries MUST include user ID filter
 - API responses MUST only contain data belonging to authenticated user
 
+**Phase III Security**:
+- MCP tools MUST validate JWT on every invocation
+- Agent responses MUST NOT leak data from other users
+- Conversation history MUST be user-scoped
+- Tool calls MUST be authorized per user permissions
+
 **Secret Management**:
 - Secrets MUST be stored in `.env` files
 - `.env` files MUST be in `.gitignore`
@@ -261,7 +408,7 @@ All specifications MUST be:
 
 ## Functional Scope
 
-### Core Features (Basic Level)
+### Phase I & II Core Features
 
 The application MUST implement these 5 features:
 
@@ -294,10 +441,46 @@ The application MUST implement these 5 features:
    - Intuitive user experience
    - Loading states and error handling
 
+### Phase III: AI Chatbot Features
+
+The AI chatbot MUST implement:
+
+1. **Natural Language Task Management**
+   - Create tasks via natural language (e.g., "Add buy groceries to my list")
+   - List tasks via natural language (e.g., "Show me my tasks")
+   - Update tasks via natural language (e.g., "Mark buy groceries as done")
+   - Delete tasks via natural language (e.g., "Remove buy groceries")
+   - Query tasks via natural language (e.g., "What tasks do I have today?")
+
+2. **Conversation Persistence**
+   - Each conversation has unique conversation_id
+   - Conversation history stored in database
+   - Conversations resumable after server restart
+   - Context maintained across multiple messages
+
+3. **MCP Tool Integration**
+   - Tools for: create_task, list_tasks, update_task, delete_task, get_task
+   - Tools validate authorization server-side
+   - Tools return structured responses
+   - Tool calls logged for auditability
+
+4. **Agent Orchestration**
+   - Agent decides which tools to call based on user intent
+   - Agent confirms destructive actions
+   - Agent handles errors gracefully
+   - Agent provides natural language feedback
+
+5. **Chat UI**
+   - ChatKit-based interface
+   - Message history display
+   - Loading indicators during tool execution
+   - Error message display
+   - Conversation resume support
+
 ### Out of Scope
 
-The following are explicitly OUT OF SCOPE for Phase 2:
-- Task sharing between users
+The following are explicitly OUT OF SCOPE:
+- Task sharing between users (Phase I & II)
 - Task categories or tags
 - Task due dates or reminders
 - Email notifications
@@ -306,10 +489,13 @@ The following are explicitly OUT OF SCOPE for Phase 2:
 - Task attachments
 - Collaborative editing
 - Third-party integrations
+- Voice input/output for chatbot
+- Multi-language support
+- Custom agent personalities
 
 ## Success Criteria
 
-### Implementation Success
+### Phase I & II Implementation Success
 
 - [ ] All specs are fully implemented without manual code
 - [ ] All 5 core features are functional
@@ -318,6 +504,17 @@ The following are explicitly OUT OF SCOPE for Phase 2:
 - [ ] Frontend successfully consumes secured APIs
 - [ ] API rejects unauthorized or cross-user access attempts
 
+### Phase III Implementation Success
+
+- [ ] Users can manage tasks via natural language
+- [ ] AI agent uses MCP tools correctly and transparently
+- [ ] Conversations persist across requests
+- [ ] Backend remains stateless (no in-memory session state)
+- [ ] All Phase I & II functionality remains stable
+- [ ] Specs pass checklist validation before implementation
+- [ ] Chat UI integrates with backend successfully
+- [ ] Conversation resume works after server restart
+
 ### Quality Success
 
 - [ ] Application is stable and handles errors gracefully
@@ -325,6 +522,10 @@ The following are explicitly OUT OF SCOPE for Phase 2:
 - [ ] All components follow separation of concerns
 - [ ] Security constraints are enforced at every layer
 - [ ] UI is responsive across devices
+- [ ] Zero unauthorized data access
+- [ ] No privilege escalation paths
+- [ ] Deterministic behavior across all components
+- [ ] Clear auditability of all actions
 
 ### Process Success
 
@@ -333,14 +534,17 @@ The following are explicitly OUT OF SCOPE for Phase 2:
 - [ ] All workflow phases completed in order
 - [ ] Prompt History Records (PHRs) created for all major work
 - [ ] Architecture Decision Records (ADRs) created for significant decisions
+- [ ] Phase III implemented as multiple independent specs
 
 ### User Experience Success
 
 - [ ] Users can sign up and sign in successfully
-- [ ] Users can perform all CRUD operations on their tasks
+- [ ] Users can perform all CRUD operations on their tasks (UI + Chat)
 - [ ] Users cannot see or access other users' tasks
 - [ ] UI provides clear feedback for all actions
 - [ ] Error messages are helpful and user-friendly
+- [ ] Chat interface is intuitive and responsive
+- [ ] Agent responses are natural and helpful
 
 ## Governance
 
@@ -385,4 +589,4 @@ Constitutional violations discovered during development MUST:
 3. Be resolved through spec amendment or implementation correction
 4. Be documented in project history for learning
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-18 | **Last Amended**: 2026-01-18
+**Version**: 1.1.0 | **Ratified**: 2026-01-18 | **Last Amended**: 2026-02-06

@@ -55,11 +55,20 @@ if is_postgres:
         )
 else:
     # SQLite configuration (for local development/testing)
+    from sqlalchemy import event
+
     engine = create_engine(
         settings.DATABASE_URL,
         echo=settings.DATABASE_ECHO,
         connect_args={"check_same_thread": False}  # Allow SQLite to work with FastAPI
     )
+
+    # Enable foreign key constraints for SQLite
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -121,7 +130,7 @@ def init_db() -> None:
     consider using a migration tool like Alembic for schema versioning.
     """
     from sqlmodel import SQLModel
-    from app.models import Task  # Import all models to register them
+    from app.models import Task, User  # Import all models to register them
 
     # Create all tables defined in SQLModel models
     SQLModel.metadata.create_all(engine)

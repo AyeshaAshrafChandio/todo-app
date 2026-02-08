@@ -102,10 +102,25 @@ async def health_check():
 
 
 # Register API routes
-from app.routes import tasks
+from app.routes import tasks, auth, teams, team_members, task_shares, chat
+
+# Include authentication routes (routes have /api/auth prefix)
+app.include_router(auth.router)
 
 # Include task routes (routes already have /api/{user_id}/tasks prefix)
 app.include_router(tasks.router)
+
+# Include team routes (routes have /api/teams prefix)
+app.include_router(teams.router)
+
+# Include team member routes (routes have /api/teams prefix)
+app.include_router(team_members.router)
+
+# Include task sharing routes (routes have /api/tasks prefix)
+app.include_router(task_shares.router)
+
+# Include chat routes (routes have /api/chat prefix) - Spec 005
+app.include_router(chat.router)
 
 
 if __name__ == "__main__":
