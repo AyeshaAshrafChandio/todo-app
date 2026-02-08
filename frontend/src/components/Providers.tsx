@@ -10,6 +10,8 @@ interface ProvidersProps {
 /**
  * Providers component - Wraps all client-side providers
  * This allows the root layout to remain a Server Component
+ *
+ * AuthProvider now includes timeout protection to prevent blank pages
  */
 export function Providers({ children }: ProvidersProps) {
   return (

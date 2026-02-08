@@ -94,9 +94,12 @@ def test_session_rollback_on_error(session: Session):
 
 def test_connection_pool_configuration():
     """Test that connection pool is configured correctly."""
-    # Assert
-    assert engine.pool.size() >= 0  # Pool exists
-    # Note: Detailed pool configuration testing requires accessing internal attributes
+    # Assert - NullPool is used for Neon Serverless (no connection pooling)
+    # NullPool doesn't have a size() method, so we check the pool class instead
+    from sqlalchemy.pool import NullPool, StaticPool
+    assert engine.pool is not None
+    assert isinstance(engine.pool, (NullPool, StaticPool))
+    # Note: NullPool is used for serverless PostgreSQL, StaticPool for SQLite testing
 
 
 def test_database_session_isolation(session: Session):
@@ -108,8 +111,10 @@ def test_database_session_isolation(session: Session):
     session.refresh(task)
     task_id = task.id
 
-    # Act - create a new session
-    with Session(engine) as new_session:
+    # Act - create a new session using the same engine as the test session
+    # Note: In tests, we use the in-memory SQLite engine from the fixture
+    test_engine = session.get_bind()
+    with Session(test_engine) as new_session:
         statement = select(Task).where(Task.id == task_id)
         retrieved_task = new_session.exec(statement).first()
 
@@ -119,31 +124,35 @@ def test_database_session_isolation(session: Session):
         assert retrieved_task.title == "Isolation Test"
 
 
-def test_concurrent_sessions():
+def test_concurrent_sessions(session: Session):
     """Test that multiple concurrent sessions work correctly."""
+    # Note: This test verifies that multiple sessions can be created and used
+    # In the test environment, we use the test session's engine
+    test_engine = session.get_bind()
+
     # Arrange & Act
     sessions = []
     try:
         for i in range(3):
-            db_generator = get_db()
-            session = next(db_generator)
-            sessions.append((session, db_generator))
+            # Create a new session using the test engine
+            new_session = Session(test_engine)
+            sessions.append(new_session)
 
             # Add a task in each session
             task = Task(title=f"Concurrent Task {i}", user_id="user123")
-            session.add(task)
-            session.commit()
+            new_session.add(task)
+            new_session.commit()
 
         # Assert - all sessions should be active
         assert len(sessions) == 3
-        assert all(s[0].is_active for s in sessions)
+        assert all(s.is_active for s in sessions)
 
     finally:
         # Cleanup
-        for session, generator in sessions:
+        for s in sessions:
             try:
-                next(generator)
-            except StopIteration:
+                s.close()
+            except Exception:
                 pass
 
 
@@ -156,8 +165,9 @@ def test_task_persistence_across_sessions(session: Session):
     session.refresh(task)
     task_id = task.id
 
-    # Act - retrieve task in a new session
-    with Session(engine) as new_session:
+    # Act - retrieve task in a new session using the same engine
+    test_engine = session.get_bind()
+    with Session(test_engine) as new_session:
         statement = select(Task).where(Task.id == task_id)
         retrieved_task = new_session.exec(statement).first()
 

@@ -32,6 +32,7 @@ def create_task(db: Session, user_id: str, task_data: TaskCreate) -> Task:
 
     This function handles the business logic for task creation:
     - Validates input data (handled by Pydantic TaskCreate schema)
+    - Validates user_id is not empty or None
     - If team_id provided, validates team membership and permissions
     - Creates Task instance with user_id and optional team_id
     - Sets completed=False (default in model)
@@ -47,6 +48,7 @@ def create_task(db: Session, user_id: str, task_data: TaskCreate) -> Task:
         Task: Created task instance with auto-generated id and timestamps
 
     Raises:
+        HTTPException: 400 if user_id is empty or None
         HTTPException: 403 if user is not a team member or has viewer role
         HTTPException: 404 if team does not exist
         HTTPException: 500 if database error occurs
@@ -62,6 +64,13 @@ def create_task(db: Session, user_id: str, task_data: TaskCreate) -> Task:
         task = create_task(db, "user123", task_data)
         ```
     """
+    # Validate user_id
+    if not user_id or user_id == "":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User ID is required and cannot be empty"
+        )
+
     try:
         # If team_id provided, validate team membership and permissions
         if task_data.team_id:

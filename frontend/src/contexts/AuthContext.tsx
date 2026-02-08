@@ -31,22 +31,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Load user on mount
+  // Load user on mount with timeout protection
   useEffect(() => {
     const loadUser = async () => {
+      console.log('[AuthContext] Initializing authentication check...');
+      console.log('[AuthContext] isAuthenticated:', authApi.isAuthenticated());
+
       if (!authApi.isAuthenticated()) {
+        console.log('[AuthContext] No valid token found - user not authenticated');
         setLoading(false);
         return;
       }
 
+      console.log('[AuthContext] Valid token found - fetching user data from /api/auth/me');
+
       try {
-        const currentUser = await authApi.getCurrentUser();
+        // Add 5-second timeout to prevent hanging
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout')), 5000)
+        );
+
+        const userPromise = authApi.getCurrentUser();
+        const currentUser = await Promise.race([userPromise, timeoutPromise]) as User;
+
+        console.log('[AuthContext] User data loaded successfully:', currentUser);
         setUser(currentUser);
       } catch (err) {
-        // Silent fail - user will be redirected to login
+        // Silent fail - clear auth and allow page to render
+        console.error('[AuthContext] Failed to load user session:', err);
+        authApi.logout();
         setUser(null);
       } finally {
         setLoading(false);
+        console.log('[AuthContext] Authentication check complete');
       }
     };
 

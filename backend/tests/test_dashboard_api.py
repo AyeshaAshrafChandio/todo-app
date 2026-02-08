@@ -433,85 +433,85 @@ class TestDashboardSharedDetails:
     """Test dashboard shared task details."""
 
     @pytest.fixture
-    def test_users_with_shares(self):
-        """Create users with various task shares."""
-        with get_db_context() as db:
-            user1 = User(
-                id="test-share-user-1",
-                email="share1@example.com",
-                name="Share User 1",
-                password_hash="$2b$12$test_hash"
-            )
-            user2 = User(
-                id="test-share-user-2",
-                email="share2@example.com",
-                name="Share User 2",
-                password_hash="$2b$12$test_hash"
-            )
-            db.add_all([user1, user2])
-            db.commit()
-            db.refresh(user1)
-            db.refresh(user2)
+    def test_users_with_shares(self, session: Session):
+        """Create users with various task shares using test session."""
+        # Use the test session instead of get_db_context()
+        user1 = User(
+            id="test-share-user-1",
+            email="share1@example.com",
+            name="Share User 1",
+            password_hash="$2b$12$test_hash"
+        )
+        user2 = User(
+            id="test-share-user-2",
+            email="share2@example.com",
+            name="Share User 2",
+            password_hash="$2b$12$test_hash"
+        )
+        session.add_all([user1, user2])
+        session.commit()
+        session.refresh(user1)
+        session.refresh(user2)
 
-            # Create tasks
-            task1 = Task(title="Task 1", user_id=user2.id)
-            task2 = Task(title="Task 2", user_id=user2.id)
-            task3 = Task(title="Task 3", user_id=user2.id)
-            db.add_all([task1, task2, task3])
-            db.commit()
+        # Create tasks
+        task1 = Task(title="Task 1", user_id=user2.id)
+        task2 = Task(title="Task 2", user_id=user2.id)
+        task3 = Task(title="Task 3", user_id=user2.id)
+        session.add_all([task1, task2, task3])
+        session.commit()
 
-            for task in [task1, task2, task3]:
-                db.refresh(task)
+        for task in [task1, task2, task3]:
+            session.refresh(task)
 
-            # Create shares (User 2 shares with User 1)
-            share1 = TaskShare(
-                task_id=task1.id,
-                shared_with_user_id=user1.id,
-                shared_by_user_id=user2.id,
-                permission=SharePermission.VIEW
-            )
-            share2 = TaskShare(
-                task_id=task2.id,
-                shared_with_user_id=user1.id,
-                shared_by_user_id=user2.id,
-                permission=SharePermission.VIEW
-            )
-            share3 = TaskShare(
-                task_id=task3.id,
-                shared_with_user_id=user1.id,
-                shared_by_user_id=user2.id,
-                permission=SharePermission.EDIT
-            )
-            db.add_all([share1, share2, share3])
-            db.commit()
+        # Create shares (User 2 shares with User 1)
+        share1 = TaskShare(
+            task_id=task1.id,
+            shared_with_user_id=user1.id,
+            shared_by_user_id=user2.id,
+            permission=SharePermission.VIEW
+        )
+        share2 = TaskShare(
+            task_id=task2.id,
+            shared_with_user_id=user1.id,
+            shared_by_user_id=user2.id,
+            permission=SharePermission.VIEW
+        )
+        share3 = TaskShare(
+            task_id=task3.id,
+            shared_with_user_id=user1.id,
+            shared_by_user_id=user2.id,
+            permission=SharePermission.EDIT
+        )
+        session.add_all([share1, share2, share3])
+        session.commit()
 
-            yield (user1, user2, [task1, task2, task3], [share1, share2, share3])
+        yield (user1, user2, [task1, task2, task3], [share1, share2, share3], session)
 
-            # Cleanup
-            for share in [share1, share2, share3]:
-                db.delete(share)
-            for task in [task1, task2, task3]:
-                db.delete(task)
-            db.delete(user1)
-            db.delete(user2)
-            db.commit()
+        # Cleanup
+        for share in [share1, share2, share3]:
+            session.delete(share)
+        for task in [task1, task2, task3]:
+            session.delete(task)
+        session.delete(user1)
+        session.delete(user2)
+        session.commit()
 
     def test_shared_details_computation(self, test_users_with_shares):
         """Test shared task details computation."""
-        user1, user2, tasks, shares = test_users_with_shares
+        user1, user2, tasks, shares, db = test_users_with_shares
 
         # Clear cache before test
         clear_all_cache()
 
         from app.services.dashboard_service import DashboardService
 
-        with get_db_context() as db:
-            service = DashboardService(db)
-            details = service.get_shared_task_details(user1.id)
+        # Use the test session instead of get_db_context()
+        service = DashboardService(db)
+        details = service.get_shared_task_details(user1.id)
 
-            assert details["total_shared"] == 3
-            assert details["view_only"] == 2  # share1 and share2
-            assert details["can_edit"] == 1  # share3
+        assert details["total_shared"] == 3
+        assert details["view_only"] == 2  # share1 and share2
+        assert details["can_edit"] == 1  # share3
 
 
 if __name__ == "__main__":

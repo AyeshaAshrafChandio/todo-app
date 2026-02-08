@@ -13,33 +13,12 @@ import pytest
 from datetime import datetime
 from sqlmodel import Session, select
 from app.models.user import User
-from app.database.connection import engine
-
-
-@pytest.fixture
-def db_session():
-    """Create a fresh database session for each test."""
-    from sqlmodel import SQLModel
-
-    # Create all tables
-    SQLModel.metadata.create_all(engine)
-
-    # Create session
-    session = Session(engine)
-
-    yield session
-
-    # Cleanup
-    session.close()
-
-    # Drop all tables after test
-    SQLModel.metadata.drop_all(engine)
 
 
 class TestUserModel:
     """Test suite for User model."""
 
-    def test_create_user_with_valid_data(self, db_session):
+    def test_create_user_with_valid_data(self, session):
         """Test creating a user with valid email and password hash."""
         # Arrange
         user = User(
@@ -48,9 +27,9 @@ class TestUserModel:
         )
 
         # Act
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
         # Assert
         assert user.id is not None
@@ -60,7 +39,7 @@ class TestUserModel:
         assert isinstance(user.created_at, datetime)
         assert isinstance(user.updated_at, datetime)
 
-    def test_user_id_auto_generated(self, db_session):
+    def test_user_id_auto_generated(self, session):
         """Test that user ID is automatically generated as UUID."""
         # Arrange
         user = User(
@@ -69,9 +48,9 @@ class TestUserModel:
         )
 
         # Act
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
         # Assert
         assert user.id is not None
@@ -84,7 +63,7 @@ class TestUserModel:
         assert len(parts[3]) == 4
         assert len(parts[4]) == 12
 
-    def test_email_uniqueness_constraint(self, db_session):
+    def test_email_uniqueness_constraint(self, session):
         """Test that duplicate emails are rejected."""
         # Arrange
         user1 = User(
@@ -97,14 +76,14 @@ class TestUserModel:
         )
 
         # Act & Assert
-        db_session.add(user1)
-        db_session.commit()
+        session.add(user1)
+        session.commit()
 
-        db_session.add(user2)
+        session.add(user2)
         with pytest.raises(Exception):  # IntegrityError or similar
-            db_session.commit()
+            session.commit()
 
-    def test_password_hash_minimum_length(self, db_session):
+    def test_password_hash_minimum_length(self, session):
         """Test that password hash must be at least 60 characters."""
         # Arrange - bcrypt hash is exactly 60 characters
         valid_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJfitzXCO"
@@ -114,15 +93,15 @@ class TestUserModel:
         )
 
         # Act
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
         # Assert
         assert len(user.password_hash) >= 60
         assert user.password_hash == valid_hash
 
-    def test_timestamps_auto_generated(self, db_session):
+    def test_timestamps_auto_generated(self, session):
         """Test that created_at and updated_at are automatically set."""
         # Arrange
         before_creation = datetime.utcnow()
@@ -132,9 +111,9 @@ class TestUserModel:
         )
 
         # Act
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
         after_creation = datetime.utcnow()
 
         # Assert
@@ -143,16 +122,16 @@ class TestUserModel:
         assert before_creation <= user.created_at <= after_creation
         assert before_creation <= user.updated_at <= after_creation
 
-    def test_user_repr(self, db_session):
+    def test_user_repr(self, session):
         """Test string representation of User."""
         # Arrange
         user = User(
             email="repr@example.com",
             password_hash="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJfitzXCO"
         )
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
         # Act
         repr_str = repr(user)
@@ -162,18 +141,18 @@ class TestUserModel:
         assert user.id in repr_str
         assert user.email in repr_str
 
-    def test_query_user_by_email(self, db_session):
+    def test_query_user_by_email(self, session):
         """Test querying user by email."""
         # Arrange
         user = User(
             email="query@example.com",
             password_hash="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJfitzXCO"
         )
-        db_session.add(user)
-        db_session.commit()
+        session.add(user)
+        session.commit()
 
         # Act
-        found_user = db_session.exec(
+        found_user = session.exec(
             select(User).where(User.email == "query@example.com")
         ).first()
 
@@ -182,19 +161,19 @@ class TestUserModel:
         assert found_user.email == "query@example.com"
         assert found_user.id == user.id
 
-    def test_query_user_by_id(self, db_session):
+    def test_query_user_by_id(self, session):
         """Test querying user by ID."""
         # Arrange
         user = User(
             email="queryid@example.com",
             password_hash="$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJfitzXCO"
         )
-        db_session.add(user)
-        db_session.commit()
-        db_session.refresh(user)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
         # Act
-        found_user = db_session.exec(
+        found_user = session.exec(
             select(User).where(User.id == user.id)
         ).first()
 
@@ -203,7 +182,7 @@ class TestUserModel:
         assert found_user.id == user.id
         assert found_user.email == "queryid@example.com"
 
-    def test_multiple_users_creation(self, db_session):
+    def test_multiple_users_creation(self, session):
         """Test creating multiple users with unique emails."""
         # Arrange
         users = [
@@ -216,11 +195,11 @@ class TestUserModel:
 
         # Act
         for user in users:
-            db_session.add(user)
-        db_session.commit()
+            session.add(user)
+        session.commit()
 
         # Assert
-        all_users = db_session.exec(select(User)).all()
+        all_users = session.exec(select(User)).all()
         assert len(all_users) == 5
 
         # Verify all have unique IDs
