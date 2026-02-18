@@ -18,14 +18,18 @@ export default function ProtectedLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  console.log('[ProtectedLayout] Render state:', { user: user ? 'present' : 'null', loading });
+
   useEffect(() => {
     if (!loading && !user) {
+      console.log('[ProtectedLayout] No user and not loading - redirecting to /login');
       router.push('/login');
     }
   }, [user, loading, router]);
 
   // Show loading state while checking authentication
   if (loading) {
+    console.log('[ProtectedLayout] Showing loading spinner');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -36,10 +40,20 @@ export default function ProtectedLayout({
     );
   }
 
-  // Don't render protected content if not authenticated
+  // Show redirecting message instead of null while redirect happens
   if (!user) {
-    return null;
+    console.log('[ProtectedLayout] No user - showing redirect message');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-4 text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
   }
+
+  console.log('[ProtectedLayout] User authenticated - rendering protected content');
 
   return (
     <ToastProvider>

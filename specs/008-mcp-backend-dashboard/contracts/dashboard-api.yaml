@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: Dashboard Statistics API
+  description: API endpoints for retrieving task statistics for the dashboard
+  version: 1.0.0
+  contact:
+    name: MCP Backend Dashboard
+
+servers:
+  - url: http://localhost:8001
+    description: Local development server
+  - url: https://api.production.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/dashboard/statistics:
+    get:
+      summary: Get task statistics for authenticated user
+      description: Returns aggregated task counts (total, pending, completed, shared) for the authenticated user
+      operationId: getDashboardStatistics
+      tags:
+        - Dashboard
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStatistics'
+              examples:
+                success:
+                  value:
+                    total_tasks: 15
+                    pending_tasks: 8
+                    completed_tasks: 7
+                    shared_tasks: 3
+        '401':
+          description: Unauthorized - Missing or invalid JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unauthorized:
+                  value:
+                    error: "Unauthorized"
+                    detail: "Invalid or missing authentication token"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                server_error:
+                  value:
+                    error: "Internal Server Error"
+                    detail: "Failed to retrieve statistics"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication endpoint
+
+  schemas:
+    DashboardStatistics:
+      type: object
+      required:
+        - total_tasks
+        - pending_tasks
+        - completed_tasks
+        - shared_tasks
+      properties:
+        total_tasks:
+          type: integer
+          description: Total number of tasks owned by the user
+          minimum: 0
+          example: 15
+        pending_tasks:
+          type: integer
+          description: Number of tasks with status 'pending'
+          minimum: 0
+          example: 8
+        completed_tasks:
+          type: integer
+          description: Number of tasks with status 'completed'
+          minimum: 0
+          example: 7
+        shared_tasks:
+          type: integer
+          description: Number of tasks shared with the user by others
+          minimum: 0
+          example: 3
+
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Unauthorized"
+        detail:
+          type: string
+          description: Additional error details
+          example: "Invalid or missing authentication token"
+
+  examples:
+    ValidStatistics:
+      value:
+        total_tasks: 15
+        pending_tasks: 8
+        completed_tasks: 7
+        shared_tasks: 3
+      summary: Valid statistics response
+
+    EmptyStatistics:
+      value:
+        total_tasks: 0
+        pending_tasks: 0
+        completed_tasks: 0
+        shared_tasks: 0
+      summary: Statistics for user with no tasks
+
+    UnauthorizedError:
+      value:
+        error: "Unauthorized"
+        detail: "Invalid or missing authentication token"
+      summary: Authentication error

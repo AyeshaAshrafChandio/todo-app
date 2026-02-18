@@ -11,11 +11,13 @@ import logging
 
 from app.database.connection import get_db
 from app.middleware.auth import get_current_user
-from app.models.user import User
 from app.models.message import MessageRole
+from typing import Dict
 from app.schemas.chat import ChatRequest, ChatResponse, ToolCall
 from app.services.conversation_service import ConversationService
 from app.services.agent_service import AgentService
+from app.services.mock_agent_service import MockAgentService
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +119,7 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 )
 async def chat(
     request: ChatRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: Dict[str, str] = Depends(get_current_user),
     session: Session = Depends(get_db)
 ) -> ChatResponse:
     """
@@ -139,37 +141,50 @@ async def chat(
     try:
         # Initialize services
         conversation_service = ConversationService(session)
-        agent_service = AgentService()
+
+        # Use mock service if enabled, otherwise use real OpenAI service
+        if settings.MOCK_OPENAI:
+            agent_service = MockAgentService()
+            logger.info(
+                "Using MockAgentService (MOCK_OPENAI=true)",
+                extra={"user_id": current_user["user_id"]}
+            )
+        else:
+            agent_service = AgentService()
+            logger.info(
+                "Using real AgentService with OpenAI API",
+                extra={"user_id": current_user["user_id"]}
+            )
 
         # Get or create conversation
         if request.conversation_id is None:
             # Create new conversation
             logger.info(
-                f"Creating new conversation for user {current_user.id}",
-                extra={"user_id": current_user.id}
+                f"Creating new conversation for user {current_user['user_id']}",
+                extra={"user_id": current_user["user_id"]}
             )
             conversation = conversation_service.create_conversation(
-                user_id=current_user.id
+                user_id=current_user["user_id"]
             )
         else:
             # Load existing conversation
             logger.info(
-                f"Loading conversation {request.conversation_id} for user {current_user.id}",
+                f"Loading conversation {request.conversation_id} for user {current_user['user_id']}",
                 extra={
-                    "user_id": current_user.id,
+                    "user_id": current_user["user_id"],
                     "conversation_id": request.conversation_id
                 }
             )
             conversation = conversation_service.get_conversation(
                 conversation_id=request.conversation_id,
-                user_id=current_user.id
+                user_id=current_user["user_id"]
             )
 
             if not conversation:
                 logger.warning(
                     f"Conversation {request.conversation_id} not found or access denied",
                     extra={
-                        "user_id": current_user.id,
+                        "user_id": current_user["user_id"],
                         "conversation_id": request.conversation_id
                     }
                 )
@@ -182,14 +197,14 @@ async def chat(
         logger.info(
             f"Adding user message to conversation {conversation.id}",
             extra={
-                "user_id": current_user.id,
+                "user_id": current_user["user_id"],
                 "conversation_id": conversation.id,
                 "message_length": len(request.message)
             }
         )
         conversation_service.add_message(
             conversation_id=conversation.id,
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             role=MessageRole.USER,
             content=request.message
         )
@@ -204,7 +219,7 @@ async def chat(
         logger.info(
             f"Running agent for conversation {conversation.id}",
             extra={
-                "user_id": current_user.id,
+                "user_id": current_user["user_id"],
                 "conversation_id": conversation.id,
                 "history_length": len(conversation_history)
             }
@@ -212,21 +227,21 @@ async def chat(
         assistant_response, tool_calls = await agent_service.run_agent(
             user_message=request.message,
             conversation_history=conversation_history[:-1],  # Exclude the message we just added
-            user_id=current_user.id
+            user_id=current_user["user_id"]
         )
 
         # Persist assistant response
         logger.info(
             f"Adding assistant response to conversation {conversation.id}",
             extra={
-                "user_id": current_user.id,
+                "user_id": current_user["user_id"],
                 "conversation_id": conversation.id,
                 "tool_calls_count": len(tool_calls)
             }
         )
         conversation_service.add_message(
             conversation_id=conversation.id,
-            user_id=current_user.id,
+            user_id=current_user["user_id"],
             role=MessageRole.ASSISTANT,
             content=assistant_response
         )
@@ -249,7 +264,7 @@ async def chat(
         # Validation errors
         logger.error(
             f"Validation error: {str(e)}",
-            extra={"user_id": current_user.id, "error": str(e)}
+            extra={"user_id": current_user["user_id"], "error": str(e)}
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -260,7 +275,7 @@ async def chat(
         # Catch-all for unexpected errors
         logger.error(
             f"Chat endpoint error: {str(e)}",
-            extra={"user_id": current_user.id, "error": str(e)},
+            extra={"user_id": current_user["user_id"], "error": str(e)},
             exc_info=True
         )
         raise HTTPException(

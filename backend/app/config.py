@@ -53,8 +53,11 @@ class Settings:
 
     # OpenAI Configuration (Spec 005 - AI Chat Backend)
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # Default to accessible model
     OPENAI_MAX_TOKENS: int = int(os.getenv("OPENAI_MAX_TOKENS", "4096"))
+
+    # Mock Mode (for testing without API calls)
+    MOCK_OPENAI: bool = os.getenv("MOCK_OPENAI", "false").lower() == "true"
 
     def __init__(self):
         """Validate required configuration on initialization."""
@@ -64,10 +67,21 @@ class Settings:
                 "Generate one using: python -c \"import secrets; print(secrets.token_urlsafe(32))\""
             )
 
-        if not self.OPENAI_API_KEY:
-            raise ValueError(
-                "OPENAI_API_KEY environment variable is required for AI Chat Backend. "
-                "Get your API key from: https://platform.openai.com/api-keys"
+        # Check OpenAI configuration (skip if mock mode is enabled)
+        if self.MOCK_OPENAI:
+            import warnings
+            warnings.warn(
+                "MOCK_OPENAI is enabled. Using mock agent service (no real API calls). "
+                "Set MOCK_OPENAI=false to use real OpenAI API.",
+                UserWarning
+            )
+        elif not self.OPENAI_API_KEY or self.OPENAI_API_KEY == "your-openai-api-key-here":
+            import warnings
+            warnings.warn(
+                "OPENAI_API_KEY is not configured. AI Chat features will not work. "
+                "Get your API key from: https://platform.openai.com/api-keys "
+                "Or set MOCK_OPENAI=true for testing without API calls.",
+                UserWarning
             )
 
     def __repr__(self) -> str:

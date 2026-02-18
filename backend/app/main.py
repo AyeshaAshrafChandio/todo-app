@@ -9,7 +9,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.database.connection import init_db, close_db
+from app.database.connection import init_db, close_db, engine
+from app.middleware.performance import PerformanceMonitoringMiddleware, setup_performance_monitoring
 
 
 @asynccontextmanager
@@ -35,6 +36,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Error initializing database: {e}")
         raise
+
+    # Setup performance monitoring
+    print("Setting up performance monitoring...")
+    try:
+        setup_performance_monitoring(engine)
+        print("Performance monitoring enabled")
+    except Exception as e:
+        print(f"Warning: Could not enable performance monitoring: {e}")
 
     # Yield control to the application
     yield
@@ -69,6 +78,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add performance monitoring middleware
+app.add_middleware(PerformanceMonitoringMiddleware)
+
 
 # Root endpoint for health check
 @app.get("/", tags=["Health"])
@@ -102,7 +114,7 @@ async def health_check():
 
 
 # Register API routes
-from app.routes import tasks, auth, teams, team_members, task_shares, chat
+from app.routes import tasks, auth, teams, team_members, task_shares, chat, dashboard, websocket
 
 # Include authentication routes (routes have /api/auth prefix)
 app.include_router(auth.router)
@@ -121,6 +133,12 @@ app.include_router(task_shares.router)
 
 # Include chat routes (routes have /api/chat prefix) - Spec 005
 app.include_router(chat.router)
+
+# Include dashboard routes (routes have /api/dashboard prefix) - Spec 008
+app.include_router(dashboard.router)
+
+# Include WebSocket routes (routes have /api/ws endpoint) - Phase 7
+app.include_router(websocket.router)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,584 @@
+# API Client Contract: Chat Frontend
+
+**Feature**: 007-chat-frontend
+**Date**: 2026-02-06
+**Phase**: Phase 1 - API Integration Contracts
+
+## Overview
+
+This document defines the API client contracts for the Chat Frontend. The frontend communicates exclusively with backend APIs (no direct database or MCP access). All API calls include JWT authentication via Authorization header.
+
+## Base Configuration
+
+### Base URL
+```
+Development: http://localhost:8000
+Production: https://api.yourdomain.com
+```
+
+### Common Headers
+```
+Content-Type: application/json
+Authorization: Bearer <jwt_token>  (for protected endpoints)
+```
+
+### Error Response Format
+All API errors follow consistent structure:
+```json
+{
+  "error": "Error type",
+  "detail": "Detailed error message"
+}
+```
+
+## Authentication Endpoints (Spec 002)
+
+### POST /api/auth/login
+
+**Purpose**: Authenticate user and receive JWT token
+
+**Request**:
+```typescript
+interface LoginRequest {
+  email: string;      // Valid email format
+  password: string;   // Minimum 8 characters
+}
+```
+
+**Response (200 OK)**:
+```typescript
+interface LoginResponse {
+  token: string;      // JWT token for authentication
+  user: {
+    id: string;       // User UUID
+    email: string;    // User email
+  };
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid request format
+  ```json
+  { "error": "Validation Error", "detail": "Email is required" }
+  ```
+- `401 Unauthorized`: Invalid credentials
+  ```json
+  { "error": "Authentication Failed", "detail": "Invalid email or password" }
+  ```
+- `500 Internal Server Error`: Server error
+  ```json
+  { "error": "Server Error", "detail": "An unexpected error occurred" }
+  ```
+
+**Frontend Implementation**:
+```typescript
+// lib/api/auth.ts
+async function login(email: string, password: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Login failed');
+  }
+
+  return response.json();
+}
+```
+
+---
+
+### POST /api/auth/register
+
+**Purpose**: Create new user account and receive JWT token
+
+**Request**:
+```typescript
+interface RegisterRequest {
+  email: string;      // Valid email format, must be unique
+  password: string;   // Minimum 8 characters
+}
+```
+
+**Response (201 Created)**:
+```typescript
+interface RegisterResponse {
+  token: string;      // JWT token for authentication
+  user: {
+    id: string;       // User UUID
+    email: string;    // User email
+  };
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid request format or validation error
+  ```json
+  { "error": "Validation Error", "detail": "Password must be at least 8 characters" }
+  ```
+- `409 Conflict`: Email already registered
+  ```json
+  { "error": "Conflict", "detail": "Email already registered" }
+  ```
+- `500 Internal Server Error`: Server error
+  ```json
+  { "error": "Server Error", "detail": "An unexpected error occurred" }
+  ```
+
+**Frontend Implementation**:
+```typescript
+// lib/api/auth.ts
+async function register(email: string, password: string): Promise<RegisterResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Registration failed');
+  }
+
+  return response.json();
+}
+```
+
+---
+
+## Chat Endpoint (Spec 005)
+
+### POST /api/chat
+
+**Purpose**: Send user message to AI assistant and receive response
+
+**Authentication**: Required (JWT token in Authorization header)
+
+**Request**:
+```typescript
+interface ChatRequest {
+  message: string;    // User message (1-10,000 characters)
+}
+```
+
+**Request Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer <jwt_token>
+```
+
+**Response (200 OK)**:
+```typescript
+interface ChatResponse {
+  reply: string;      // AI assistant response
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid request format
+  ```json
+  { "error": "Validation Error", "detail": "Message is required" }
+  ```
+- `401 Unauthorized`: Missing or invalid JWT token
+  ```json
+  { "error": "Unauthorized", "detail": "Invalid or expired token" }
+  ```
+- `500 Internal Server Error`: Server error
+  ```json
+  { "error": "Server Error", "detail": "An unexpected error occurred" }
+  ```
+- `504 Gateway Timeout`: AI processing timeout
+  ```json
+  { "error": "Timeout", "detail": "AI processing took too long" }
+  ```
+
+**Frontend Implementation**:
+```typescript
+// lib/api/chat.ts
+async function sendMessage(message: string, token: string): Promise<ChatResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ message })
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      // Token expired - redirect to login
+      throw new Error('SESSION_EXPIRED');
+    }
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to send message');
+  }
+
+  return response.json();
+}
+```
+
+---
+
+## API Client Architecture
+
+### Base Client (lib/api/client.ts)
+
+**Purpose**: Centralized API client with interceptors for JWT handling and error management
+
+**Features**:
+- Automatic Authorization header injection
+- Centralized error handling
+- Request/response interceptors
+- Type-safe responses
+
+**Implementation**:
+```typescript
+// lib/api/client.ts
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+interface ApiError {
+  error: string;
+  detail: string;
+}
+
+class ApiClient {
+  private baseUrl: string;
+  private getToken: () => string | null;
+
+  constructor(baseUrl: string, getToken: () => string | null) {
+    this.baseUrl = baseUrl;
+    this.getToken = getToken;
+  }
+
+  async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const token = this.getToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (!response.ok) {
+      const error: ApiError = await response.json().catch(() => ({
+        error: 'Unknown Error',
+        detail: 'An unexpected error occurred'
+      }));
+
+      // Handle 401 Unauthorized (token expired)
+      if (response.status === 401) {
+        // Trigger logout/redirect to login
+        throw new Error('SESSION_EXPIRED');
+      }
+
+      throw new Error(error.detail || error.error);
+    }
+
+    return response.json();
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
+  }
+
+  async post<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+}
+
+export default ApiClient;
+```
+
+### Authentication API Client (lib/api/auth.ts)
+
+```typescript
+// lib/api/auth.ts
+import ApiClient from './client';
+
+const apiClient = new ApiClient(
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  () => null // No token needed for auth endpoints
+);
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+  };
+}
+
+export async function login(data: LoginRequest): Promise<AuthResponse> {
+  return apiClient.post<AuthResponse>('/api/auth/login', data);
+}
+
+export async function register(data: RegisterRequest): Promise<AuthResponse> {
+  return apiClient.post<AuthResponse>('/api/auth/register', data);
+}
+```
+
+### Chat API Client (lib/api/chat.ts)
+
+```typescript
+// lib/api/chat.ts
+import ApiClient from './client';
+
+// Token getter will be provided by AuthContext
+let tokenGetter: () => string | null = () => null;
+
+export function setTokenGetter(getter: () => string | null) {
+  tokenGetter = getter;
+}
+
+const apiClient = new ApiClient(
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  () => tokenGetter()
+);
+
+export interface ChatRequest {
+  message: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+}
+
+export async function sendMessage(message: string): Promise<ChatResponse> {
+  return apiClient.post<ChatResponse>('/api/chat', { message });
+}
+```
+
+---
+
+## Error Handling Strategy
+
+### Error Types
+
+**Network Errors**:
+- No internet connection
+- Request timeout
+- DNS resolution failure
+
+**Client Errors (4xx)**:
+- 400 Bad Request: Invalid input
+- 401 Unauthorized: Token expired or invalid
+- 403 Forbidden: Insufficient permissions
+- 409 Conflict: Resource conflict (e.g., email already exists)
+
+**Server Errors (5xx)**:
+- 500 Internal Server Error: Unexpected server error
+- 504 Gateway Timeout: AI processing timeout
+
+### Error Handling Flow
+
+```typescript
+try {
+  const response = await apiClient.post('/api/chat', { message });
+  // Success - update state
+} catch (error) {
+  if (error.message === 'SESSION_EXPIRED') {
+    // Redirect to login
+    router.push('/auth/login?expired=true');
+  } else if (error.message.includes('Network')) {
+    // Show network error with retry
+    setError('Network error - please check your connection');
+  } else {
+    // Show generic error with retry
+    setError('Something went wrong - please try again');
+  }
+}
+```
+
+### Retry Logic
+
+**Exponential Backoff**:
+- First retry: 1 second delay
+- Second retry: 2 seconds delay
+- Third retry: 4 seconds delay
+- Max retries: 3
+
+**Implementation**:
+```typescript
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3
+): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+    }
+  }
+  throw new Error('Max retries reached');
+}
+```
+
+---
+
+## Security Considerations
+
+### JWT Token Management
+
+**Storage**:
+- **Preferred**: httpOnly cookie (set by backend)
+- **Fallback**: Secure localStorage with `secure-token` key
+
+**Transmission**:
+- Always in Authorization header: `Bearer <token>`
+- Never in URL query parameters
+- Never in request body (except login/register responses)
+
+**Expiration**:
+- Frontend checks token expiration before requests
+- Backend validates token on every request
+- Redirect to login on 401 Unauthorized
+
+### CORS Configuration
+
+**Backend must allow**:
+```
+Access-Control-Allow-Origin: https://yourdomain.com
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Allow-Credentials: true
+```
+
+### Input Sanitization
+
+**Frontend validation**:
+- Email format validation
+- Password length validation
+- Message length validation (1-10,000 characters)
+
+**Backend validation** (backend responsibility):
+- SQL injection prevention
+- XSS prevention
+- CSRF prevention
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+**API Client Tests**:
+```typescript
+describe('ApiClient', () => {
+  it('should add Authorization header when token exists', async () => {
+    // Mock fetch
+    // Call apiClient.post with token
+    // Verify Authorization header included
+  });
+
+  it('should handle 401 Unauthorized by throwing SESSION_EXPIRED', async () => {
+    // Mock 401 response
+    // Call apiClient.post
+    // Expect SESSION_EXPIRED error
+  });
+});
+```
+
+**Auth API Tests**:
+```typescript
+describe('auth API', () => {
+  it('should login successfully with valid credentials', async () => {
+    // Mock successful login response
+    // Call login()
+    // Verify token and user returned
+  });
+
+  it('should throw error on invalid credentials', async () => {
+    // Mock 401 response
+    // Call login()
+    // Expect error thrown
+  });
+});
+```
+
+**Chat API Tests**:
+```typescript
+describe('chat API', () => {
+  it('should send message successfully with valid token', async () => {
+    // Mock successful chat response
+    // Call sendMessage()
+    // Verify reply returned
+  });
+
+  it('should throw SESSION_EXPIRED on 401', async () => {
+    // Mock 401 response
+    // Call sendMessage()
+    // Expect SESSION_EXPIRED error
+  });
+});
+```
+
+### Integration Tests
+
+**Authentication Flow**:
+1. Call register() → Verify token received
+2. Call login() → Verify token received
+3. Call sendMessage() with token → Verify success
+
+**Error Handling Flow**:
+1. Call sendMessage() with expired token → Verify 401 handled
+2. Call sendMessage() with network error → Verify retry logic
+3. Call sendMessage() with server error → Verify error message
+
+---
+
+## Environment Variables
+
+### Required Variables
+
+```bash
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000  # Backend API base URL
+```
+
+### Optional Variables
+
+```bash
+# .env.local
+NEXT_PUBLIC_API_TIMEOUT=30000              # Request timeout (ms)
+NEXT_PUBLIC_RETRY_MAX_ATTEMPTS=3           # Max retry attempts
+NEXT_PUBLIC_RETRY_DELAY=1000               # Initial retry delay (ms)
+```
+
+---
+
+## Next Steps
+
+1. ✅ API contracts documented
+2. → Generate quickstart.md (setup and testing guide)
+3. → Update agent context (CLAUDE.md)
+4. → Run /sp.tasks to generate tasks.md

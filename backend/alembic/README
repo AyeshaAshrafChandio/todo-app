@@ -1,0 +1,15 @@
+Generic single-database configuration for Alembic migrations.
+
+This directory contains the Alembic migration environment for the application.
+
+Key files:
+- env.py: Migration environment configuration
+- script.py.mako: Template for generating migration files
+- versions/: Directory containing migration scripts
+
+Usage:
+- Generate migration: alembic revision --autogenerate -m "description"
+- Apply migrations: alembic upgrade head
+- Rollback migration: alembic downgrade -1
+- View history: alembic history
+- View current version: alembic current

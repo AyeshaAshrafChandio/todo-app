@@ -7,6 +7,7 @@ and tool invocation for the AI Chat Backend (Spec 005).
 
 from typing import List, Dict, Any, Optional
 import logging
+import json
 from openai import AsyncOpenAI
 from app.config import settings
 from app.models.message import Message, MessageRole
@@ -169,7 +170,21 @@ Response format:
                 # Execute tool calls
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
-                    tool_args = eval(tool_call.function.arguments)
+
+                    # SECURITY FIX: Use json.loads() instead of eval()
+                    # eval() is dangerous and can execute arbitrary code
+                    try:
+                        tool_args = json.loads(tool_call.function.arguments)
+                    except json.JSONDecodeError as e:
+                        logger.error(
+                            f"Failed to parse tool arguments: {str(e)}",
+                            extra={
+                                "tool": tool_name,
+                                "arguments_raw": tool_call.function.arguments,
+                                "user_id": user_id
+                            }
+                        )
+                        raise ValueError(f"Invalid tool arguments format: {str(e)}")
 
                     logger.info(
                         f"Agent invoking tool: {tool_name}",
